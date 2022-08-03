@@ -8,6 +8,7 @@ import (
 )
 
 const ENTER_QUEUE string = "!q"
+const LEAVE_QUEUE string = "!leave"
 const REPORT_WIN string = "!report win"
 const QUEUE_STATUS string = "!status"
 const MATT string = "Matt"
@@ -59,6 +60,9 @@ func MessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			formattedMessage := fmt.Sprintf("Player %s already in queue", messagingPlayer)
 			s.ChannelMessageSend(m.ChannelID, formattedMessage)
 		}
+
+	case LEAVE_QUEUE:
+		ks
 
 	case QUEUE_STATUS:
 		currentQueue := convertQueueToReadableString()
