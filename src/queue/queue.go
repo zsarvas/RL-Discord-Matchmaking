@@ -1,6 +1,9 @@
 package queue
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type Queue struct {
 	q []string
@@ -39,6 +42,18 @@ func (queue *Queue) PlayerInQueue(player string) bool {
 	return false
 }
 
+func (queue *Queue) LeaveQueue(player string) {
+	newSlice := []string{}
+
+	for _, val := range queue.q {
+		if val == player {
+			continue
+		}
+		newSlice = append(newSlice, val)
+	}
+	queue.q = newSlice
+}
+
 func (queue *Queue) DisplayQueue() string {
 	if queue.queueIsEmpty() {
 		return ""
@@ -46,12 +61,17 @@ func (queue *Queue) DisplayQueue() string {
 
 	displayQueue := []string{}
 
-	for _, val := range queue.q {
-		santizedName := strings.Split(val, "#")[0]
-		displayQueue = append(displayQueue, santizedName)
+	for idx, val := range queue.q {
+		// Make a slice of wanted variables
+		placement := strconv.Itoa(idx + 1)
+		sanitizedName := strings.Split(val, "#")[0]
+		s := []string{placement, ". ", sanitizedName}
+
+		numberedName := strings.Join(s, "")
+		displayQueue = append(displayQueue, numberedName)
 	}
 
-	currentQueue := strings.Join(displayQueue, ", ")
+	currentQueue := strings.Join(displayQueue, "\n")
 
 	return currentQueue
 }

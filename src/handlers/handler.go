@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/zsarvas/RL-Discord-Matchmaking/command"
@@ -27,11 +28,28 @@ func MessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		prospectivePlayer := m.Author.String()
 
 		if matchQueue.PlayerInQueue(prospectivePlayer) {
-			formattedMessage := fmt.Sprintf("Player %s already in queue", prospectivePlayer)
+			prospectivePlayer = strings.Split(prospectivePlayer, "#")[0]
+			formattedMessage := fmt.Sprintf("Player %s is already in the queue.", prospectivePlayer)
 			s.ChannelMessageSend(m.ChannelID, formattedMessage)
 		} else {
 			matchQueue.Enqueue(prospectivePlayer)
-			s.ChannelMessageSend(m.ChannelID, "You have entered the queue")
+			prospectivePlayer = strings.Split(prospectivePlayer, "#")[0]
+			formattedMessage := fmt.Sprintf("Player %s has entered the queue.", prospectivePlayer)
+			s.ChannelMessageSend(m.ChannelID, formattedMessage)
+		}
+
+	case command.LEAVE_QUEUE:
+		prospectivePlayer := m.Author.String()
+
+		if matchQueue.PlayerInQueue(prospectivePlayer) {
+			matchQueue.LeaveQueue(prospectivePlayer)
+			prospectivePlayer = strings.Split(prospectivePlayer, "#")[0]
+			formattedMessage := fmt.Sprintf("Player %s has been removed from the queue.", prospectivePlayer)
+			s.ChannelMessageSend(m.ChannelID, formattedMessage)
+		} else {
+			prospectivePlayer = strings.Split(prospectivePlayer, "#")[0]
+			formattedMessage := fmt.Sprintf("Player %s is not in the queue.", prospectivePlayer)
+			s.ChannelMessageSend(m.ChannelID, formattedMessage)
 		}
 
 	case command.QUEUE_STATUS:
@@ -39,7 +57,7 @@ func MessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, currentQueue)
 
 	case command.MATT:
-		s.ChannelMessageSend(m.ChannelID, "Matt is a dingus")
+		s.ChannelMessageSend(m.ChannelID, "Matt is a dingus.")
 
 	case command.REPORT_WIN:
 		s.ChannelMessageSend(m.ChannelID, "Team wins.")
