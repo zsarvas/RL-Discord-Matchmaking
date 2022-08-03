@@ -2,39 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/zsarvas/RL-Discord-Matchmaking/command"
+	"github.com/zsarvas/RL-Discord-Matchmaking/queue"
 )
 
-const ENTER_QUEUE string = "!q"
-const REPORT_WIN string = "!report win"
-const QUEUE_STATUS string = "!status"
-const MATT string = "Matt"
-
-var queue []string
-
-func validatePlayerInQueue(player string) bool {
-	for _, val := range queue {
-		if val == player {
-			return true
-		}
-	}
-
-	return false
-}
-
-func convertQueueToReadableString() string {
-	displayQueue := []string{}
-	for _, val := range queue {
-		santizedName := strings.Split(val, "#")[0]
-		displayQueue = append(displayQueue, santizedName)
-	}
-
-	currentQueue := strings.Join(displayQueue, ", ")
-
-	return currentQueue
-}
+var matchQueue queue.Queue
 
 func MessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Early return if the message is from the bot
@@ -49,25 +23,25 @@ func MessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	contentMessage := m.Content
 
 	switch contentMessage {
-	case ENTER_QUEUE:
-		messagingPlayer := m.Author.String()
+	case command.ENTER_QUEUE:
+		prospectivePlayer := m.Author.String()
 
-		if !validatePlayerInQueue(messagingPlayer) {
-			queue = append(queue, messagingPlayer)
-			s.ChannelMessageSend(m.ChannelID, "You have entered the queue")
-		} else {
-			formattedMessage := fmt.Sprintf("Player %s already in queue", messagingPlayer)
+		if matchQueue.PlayerInQueue(prospectivePlayer) {
+			formattedMessage := fmt.Sprintf("Player %s already in queue", prospectivePlayer)
 			s.ChannelMessageSend(m.ChannelID, formattedMessage)
+		} else {
+			matchQueue.Enqueue(prospectivePlayer)
+			s.ChannelMessageSend(m.ChannelID, "You have entered the queue")
 		}
 
-	case QUEUE_STATUS:
-		currentQueue := convertQueueToReadableString()
+	case command.QUEUE_STATUS:
+		currentQueue := matchQueue.DisplayQueue()
 		s.ChannelMessageSend(m.ChannelID, currentQueue)
 
-	case MATT:
+	case command.MATT:
 		s.ChannelMessageSend(m.ChannelID, "Matt is a dingus")
 
-	case REPORT_WIN:
+	case command.REPORT_WIN:
 		s.ChannelMessageSend(m.ChannelID, "Team wins.")
 
 	default:
