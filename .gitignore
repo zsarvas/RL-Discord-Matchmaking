@@ -1,3 +1,6 @@
+# Environment Variables
+dev.env
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
