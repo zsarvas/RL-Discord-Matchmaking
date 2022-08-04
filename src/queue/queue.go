@@ -42,16 +42,20 @@ func (queue *Queue) PlayerInQueue(player string) bool {
 	return false
 }
 
-func (queue *Queue) LeaveQueue(player string) {
+func (queue *Queue) LeaveQueue(player string) bool {
 	newSlice := []string{}
+	playerRemoved := false
 
 	for _, val := range queue.q {
 		if val == player {
+			playerRemoved = true
 			continue
 		}
 		newSlice = append(newSlice, val)
 	}
+
 	queue.q = newSlice
+	return playerRemoved
 }
 
 func (queue *Queue) DisplayQueue() string {
