@@ -1,4 +1,4 @@
-package command
+package application
 
 const ENTER_QUEUE string = "!q"
 const LEAVE_QUEUE string = "!leave"
