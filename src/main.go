@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -10,39 +11,47 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
-	"github.com/zsarvas/RL-Discord-Matchmaking/handlers"
+	"github.com/zsarvas/RL-Discord-Matchmaking/application"
+	"github.com/zsarvas/RL-Discord-Matchmaking/infrastructure"
+	"github.com/zsarvas/RL-Discord-Matchmaking/interfaces"
 )
 
-var (
-	Token string
-)
+var Token string
+var playerRepository *interfaces.PlayerRepo
 
 func init() {
-
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.Parse()
-}
 
-func main() {
-
+	// Token Initialization
 	err := godotenv.Load("dev.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	Token := os.Getenv("TOKEN")
+	Token = os.Getenv("TOKEN")
 
 	if Token == "" {
+		err := errors.New("no token found")
+		log.Fatal(err)
 	}
 
+	// Data Initialization
+	playerRepoHandler := infrastructure.NewPlayerHandler()
+	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
+}
+
+func main() {
 	clientConnection, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
 	}
 
-	// Registers handler Function
-	clientConnection.AddHandler(handlers.MessageHandler)
+	// Create application bot delegator
+	// Register handler Function
+	d := application.NewDelegator(playerRepository)
+	clientConnection.AddHandler(d.InitiateDelegator)
 
 	// Open websocket begin listening handle error
 	err = clientConnection.Open()
