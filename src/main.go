@@ -10,17 +10,22 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
-	"github.com/zsarvas/RL-Discord-Matchmaking/handlers"
+	"github.com/zsarvas/RL-Discord-Matchmaking/application"
+	"github.com/zsarvas/RL-Discord-Matchmaking/infrastructure"
+	"github.com/zsarvas/RL-Discord-Matchmaking/interfaces"
 )
 
 var (
 	Token string
 )
 
-func init() {
+var playerRepository *interfaces.PlayerRepo
 
+func init() {
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.Parse()
+	playerRepoHandler := infrastructure.NewPlayerHandler()
+	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
 }
 
 func main() {
@@ -33,6 +38,7 @@ func main() {
 	Token := os.Getenv("TOKEN")
 
 	if Token == "" {
+		return
 	}
 
 	clientConnection, err := discordgo.New("Bot " + Token)
@@ -41,8 +47,9 @@ func main() {
 		return
 	}
 
+	d := application.NewDelegator(playerRepository)
 	// Registers handler Function
-	clientConnection.AddHandler(handlers.MessageHandler)
+	clientConnection.AddHandler(d.InitiateDelegator)
 
 	// Open websocket begin listening handle error
 	err = clientConnection.Open()
