@@ -9,7 +9,6 @@ type PlayerDataHandler interface {
 }
 
 type PlayerDataRepo struct {
-	// dbHandlers map[string]PlayerDataHandler
 	dbHandler PlayerDataHandler
 }
 
@@ -35,7 +34,3 @@ func (repo *PlayerRepo) Get(playerId string) domain.Player {
 func (repo *PlayerRepo) Remove(id string) {
 	repo.dbHandler.Remove(id)
 }
-
-// type DbMatchRepo DbRepo
-
-// func NewDbMatchRepo(DbHandlers map[string]DbHandler) *DbMatchRepo {}

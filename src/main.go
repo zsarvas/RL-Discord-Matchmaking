@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -15,40 +16,41 @@ import (
 	"github.com/zsarvas/RL-Discord-Matchmaking/interfaces"
 )
 
-var (
-	Token string
-)
-
+var Token string
 var playerRepository *interfaces.PlayerRepo
 
 func init() {
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.Parse()
-	playerRepoHandler := infrastructure.NewPlayerHandler()
-	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
-}
 
-func main() {
-
+	// Token Initialization
 	err := godotenv.Load("dev.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	Token := os.Getenv("TOKEN")
+	Token = os.Getenv("TOKEN")
 
 	if Token == "" {
-		return
+		err := errors.New("no token found")
+		log.Fatal(err)
 	}
 
+	// Data Initialization
+	playerRepoHandler := infrastructure.NewPlayerHandler()
+	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
+}
+
+func main() {
 	clientConnection, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
 	}
 
+	// Create application bot delegator
+	// Register handler Function
 	d := application.NewDelegator(playerRepository)
-	// Registers handler Function
 	clientConnection.AddHandler(d.InitiateDelegator)
 
 	// Open websocket begin listening handle error

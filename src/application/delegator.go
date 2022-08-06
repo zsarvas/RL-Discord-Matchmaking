@@ -39,31 +39,32 @@ func (d *Delegator) HandleIncomingCommand() {
 	switch d.command {
 	case ENTER_QUEUE:
 		d.handleEnterQueue()
-	// case LEAVE_QUEUE:
-	// 	cd.handleLeaveQueue(queue, player)
-	// case REPORT_WIN:
-	// 	cd.session.ChannelMessageSend(cd.discordUser.ChannelID, "Team wins.")
-	// case QUEUE_STATUS:
-	// 	// TODO(@Ritter_Gustave): refactor this later
-	// 	presentationQueue := queue.DisplayQueue()
-	// 	if presentationQueue == "" {
-	// 		cd.session.ChannelMessageSend(cd.discordUser.ChannelID, "Queue is empty")
-	// 		return
-	// 	}
-
-	// 	cd.session.ChannelMessageSend(cd.discordUser.ChannelID, queue.DisplayQueue())
-	// case MATT:
-	// 	cd.session.ChannelMessageSend(cd.discordUser.ChannelID, "Matt is a dingus.")
+	case LEAVE_QUEUE:
+		d.handleLeaveQueue()
+	case QUEUE_STATUS:
+		d.handleDisplayQueue()
+	case REPORT_WIN:
+		// Not Implemented Fully
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Team wins.")
+	case MATT:
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 	default:
+		return
 	}
 }
 
-func (d *Delegator) handleEnterQueue() {
+// Will check the DB or memory-implementation for a player
+// If no player exists, makes a new one and returns it
+func (d Delegator) fetchPlayer() domain.Player {
 	incomingId := d.DiscordUser.Author.String()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId)
 
-	fmt.Printf("Incoming ID %s", incomingId)
-	fmt.Printf("prospectivePlayer %v", prospectivePlayer)
+	return prospectivePlayer
+}
+
+func (d *Delegator) handleEnterQueue() {
+	prospectivePlayer := d.fetchPlayer()
+
 	if d.queue.PlayerInQueue(prospectivePlayer) {
 		formattedMessage := fmt.Sprintf("Player %s is already in the queue.", prospectivePlayer.DisplayName)
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
@@ -76,31 +77,32 @@ func (d *Delegator) handleEnterQueue() {
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
 }
 
-// 	// Queue should return if the addition of this player has popped the queue
-// 	// and handle accordingly
-// 	queuePopped := q.Enqueue(player)
+func (d *Delegator) handleLeaveQueue() {
+	incomingId := d.DiscordUser.Author.String()
+	prospectivePlayer := d.PlayerRepository.Get(incomingId)
 
-// 	if queuePopped {
-// 		// Dump the queue into a match
-// 		matchHandler.DumpQueueIntoMatch(q)
-// 		return
-// 	}
+	if !d.queue.PlayerInQueue(prospectivePlayer) {
+		// Player isn't in queue, exit
+		return
+	}
 
-// 	formattedMessage := fmt.Sprintf("Player %s has entered the queue.", player.DisplayName)
-// 	cd.session.ChannelMessageSend(cd.discordUser.ChannelID, formattedMessage)
-// }
+	playerSuccessfullyRemoved := d.queue.LeaveQueue(prospectivePlayer)
 
-// func (cd *command_delegator) handleLeaveQueue(q *queue.Queue, player player.Player) {
-// 	playerSuccessfullyRemoved := q.LeaveQueue(player)
+	if playerSuccessfullyRemoved {
+		d.Session.ChannelMessageSend(
+			d.DiscordUser.ChannelID,
+			fmt.Sprintf("Player %s has been removed from the queue.", prospectivePlayer.DisplayName),
+		)
+	}
+}
 
-// 	if playerSuccessfullyRemoved {
-// 		cd.session.ChannelMessageSend(
-// 			cd.discordUser.ChannelID,
-// 			fmt.Sprintf("Player %s has been removed from the queue.", player.DisplayName),
-// 		)
+func (d Delegator) handleDisplayQueue() {
+	presentationqueue := d.queue.DisplayQueue()
 
-// 		return
-// 	}
+	if presentationqueue == "" {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "queue is empty")
+		return
+	}
 
-// 	// If player is not in the queue, do nothing
-// }
+	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, presentationqueue)
+}
