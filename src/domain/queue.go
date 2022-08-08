@@ -82,3 +82,9 @@ func (queue *Queue) DisplayQueue() string {
 
 	return currentQueue
 }
+
+func (queue *Queue) ClearQueue() bool {
+	queue.queue = []Player{}
+
+	return true
+}

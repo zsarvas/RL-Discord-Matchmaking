@@ -12,16 +12,19 @@ type Delegator struct {
 	DiscordUser      *discordgo.MessageCreate
 	queue            *domain.Queue
 	PlayerRepository domain.PlayerRepository
-	command          string
+	// MatchRepository  Match
+	command string
 }
 
 func NewDelegator(playerRepo domain.PlayerRepository) *Delegator {
 	// could possible move this queue out of the 'constructor'
 	newQueue := domain.NewQueue(3)
+	// newMatchRepository := &MatchHolder{}
 
 	cd := &Delegator{
 		PlayerRepository: playerRepo,
 		queue:            newQueue,
+		// matchrepo
 	}
 
 	return cd
@@ -43,6 +46,8 @@ func (d *Delegator) HandleIncomingCommand() {
 		d.handleLeaveQueue()
 	case QUEUE_STATUS:
 		d.handleDisplayQueue()
+	case CLEAR_QUEUE:
+		d.handleClearQueue()
 	case REPORT_WIN:
 		// Not Implemented Fully
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Team wins.")
@@ -66,14 +71,14 @@ func (d *Delegator) handleEnterQueue() {
 	prospectivePlayer := d.fetchPlayer()
 
 	if d.queue.PlayerInQueue(prospectivePlayer) {
-		formattedMessage := fmt.Sprintf("Player %s is already in the queue.", prospectivePlayer.DisplayName)
+		formattedMessage := fmt.Sprintf("%s is already in the queue.", prospectivePlayer.DisplayName)
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
 
 		return
 	}
 
 	d.queue.Enqueue(prospectivePlayer)
-	formattedMessage := fmt.Sprintf("Player %s has entered the queue.", prospectivePlayer.DisplayName)
+	formattedMessage := fmt.Sprintf("%s has entered the queue.", prospectivePlayer.DisplayName)
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
 }
 
@@ -91,7 +96,7 @@ func (d *Delegator) handleLeaveQueue() {
 	if playerSuccessfullyRemoved {
 		d.Session.ChannelMessageSend(
 			d.DiscordUser.ChannelID,
-			fmt.Sprintf("Player %s has been removed from the queue.", prospectivePlayer.DisplayName),
+			fmt.Sprintf("%s has been removed from the queue.", prospectivePlayer.DisplayName),
 		)
 	}
 }
@@ -100,9 +105,18 @@ func (d Delegator) handleDisplayQueue() {
 	presentationqueue := d.queue.DisplayQueue()
 
 	if presentationqueue == "" {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "queue is empty")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue is empty")
 		return
 	}
 
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, presentationqueue)
+}
+
+func (d *Delegator) handleClearQueue() {
+
+	queueSuccessfullyCleared := d.queue.ClearQueue()
+
+	if queueSuccessfullyCleared {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue has been cleared.")
+	}
 }
