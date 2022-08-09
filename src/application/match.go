@@ -12,9 +12,14 @@ type Match struct {
 type MatchHolder struct {
 	Match         Match
 	Winners       Team
+	Losers        Team
 	ActiveMatches map[string]Match
 }
 
 type MatchRepository interface {
 	AddMatch(match MatchHolder)
+}
+
+func AddMmr(player *domain.Player) {
+
 }
