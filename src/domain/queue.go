@@ -82,3 +82,11 @@ func (queue *Queue) DisplayQueue() string {
 
 	return currentQueue
 }
+
+func (queue *Queue) GetPopLength() int {
+	return queue.popLength
+}
+
+func (queue *Queue) GetQueueLength() int {
+	return len(queue.queue)
+}

@@ -2,6 +2,7 @@ package interfaces
 
 import "github.com/zsarvas/RL-Discord-Matchmaking/domain"
 
+
 type PlayerDataHandler interface {
 	Add(newPlayer domain.Player)
 	Remove(id string)

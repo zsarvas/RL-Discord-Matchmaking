@@ -18,6 +18,7 @@ import (
 
 var Token string
 var playerRepository *interfaces.PlayerRepo
+var matchRepository *interfaces.MatchRepo
 
 func init() {
 	flag.StringVar(&Token, "t", "", "Bot Token")
@@ -38,7 +39,9 @@ func init() {
 
 	// Data Initialization
 	playerRepoHandler := infrastructure.NewPlayerHandler()
+	matchRepoHandler := infrastructure.NewMatchHandler()
 	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
+	matchRepository = interfaces.NewMatchDataRepo(matchRepoHandler)
 }
 
 func main() {
@@ -50,7 +53,7 @@ func main() {
 
 	// Create application bot delegator
 	// Register handler Function
-	d := application.NewDelegator(playerRepository)
+	d := application.NewDelegator(playerRepository, matchRepository)
 	clientConnection.AddHandler(d.InitiateDelegator)
 
 	// Open websocket begin listening handle error

@@ -2,6 +2,7 @@ package application
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
@@ -12,15 +13,17 @@ type Delegator struct {
 	DiscordUser      *discordgo.MessageCreate
 	queue            *domain.Queue
 	PlayerRepository domain.PlayerRepository
+	MatchRepository  MatchRepository
 	command          string
 }
 
-func NewDelegator(playerRepo domain.PlayerRepository) *Delegator {
+func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
 	// could possible move this queue out of the 'constructor'
-	newQueue := domain.NewQueue(3)
+	newQueue := domain.NewQueue(4)
 
 	cd := &Delegator{
 		PlayerRepository: playerRepo,
+		MatchRepository:  matchRepo,
 		queue:            newQueue,
 	}
 
@@ -48,6 +51,40 @@ func (d *Delegator) HandleIncomingCommand() {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Team wins.")
 	case MATT:
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
+	case DISPLAY_MATCHES:
+		// Should refactor, put this logic in appropriate layer
+		activeMatches := d.MatchRepository.GetMatches()
+		
+		if len(activeMatches) == 0 {
+			d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+			return
+		}
+
+		message := []string{}
+
+		for k, v := range activeMatches {
+			stringifiedTeamOne := []string{"["}
+			stringifiedTeamTwo := []string{"["}
+
+			for _, player := range v.TeamOne {
+				stringifiedTeamOne = append(stringifiedTeamOne, player.DisplayName, ",")
+			}
+			for _, player := range v.TeamTwo {
+				stringifiedTeamTwo = append(stringifiedTeamTwo, player.DisplayName, ",")
+			}
+			stringifiedTeamOne = append(stringifiedTeamOne, "]")
+			stringifiedTeamTwo = append(stringifiedTeamTwo, "]")
+
+			matchInformation := fmt.Sprintf(
+				"Match id %s: between %s and %s \n", k.String(),
+				strings.Join(stringifiedTeamOne, " "),
+				strings.Join(stringifiedTeamTwo, " "),
+			)
+
+			message = append(message, matchInformation)
+		}
+
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, strings.Join(message, "\n"))
 	default:
 		return
 	}
@@ -73,6 +110,20 @@ func (d *Delegator) handleEnterQueue() {
 	}
 
 	d.queue.Enqueue(prospectivePlayer)
+
+	queueIsPopping := d.handleQueuePop()
+
+	if queueIsPopping {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue POPPED!")
+		match := Match{
+			TeamOne: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
+			TeamTwo: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
+		}
+
+		d.MatchRepository.Add(match)
+		return
+	}
+
 	formattedMessage := fmt.Sprintf("Player %s has entered the queue.", prospectivePlayer.DisplayName)
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
 }
@@ -105,4 +156,11 @@ func (d Delegator) handleDisplayQueue() {
 	}
 
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, presentationqueue)
+}
+
+func (d *Delegator) handleQueuePop() bool {
+	queueLength := d.queue.GetQueueLength()
+	popLength := d.queue.GetPopLength()
+
+	return queueLength == popLength
 }
