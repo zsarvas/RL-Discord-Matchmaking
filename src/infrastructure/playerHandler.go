@@ -1,8 +1,6 @@
 package infrastructure
 
-import (
-	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
-)
+import "github.com/zsarvas/RL-Discord-Matchmaking/domain"
 
 type PlayerHandler struct {
 	players map[string]domain.Player

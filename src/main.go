@@ -65,6 +65,11 @@ func main() {
 
 	fmt.Println("Bot is open and listening...")
 
+	dbHandler := infrastructure.NewSqliteHandler("/var/tmp/production.sqlite")
+
+	handlers := make(map[string]interfaces.DbHandler)
+	handlers["DbPlayerRepo"] = dbHandler
+
 	// Wait for kill signal to terminate
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)

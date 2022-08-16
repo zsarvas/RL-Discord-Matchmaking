@@ -54,7 +54,7 @@ func (d *Delegator) HandleIncomingCommand() {
 	case DISPLAY_MATCHES:
 		// Should refactor, put this logic in appropriate layer
 		activeMatches := d.MatchRepository.GetMatches()
-		
+
 		if len(activeMatches) == 0 {
 			d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
 			return
@@ -103,7 +103,7 @@ func (d *Delegator) handleEnterQueue() {
 	prospectivePlayer := d.fetchPlayer()
 
 	if d.queue.PlayerInQueue(prospectivePlayer) {
-		formattedMessage := fmt.Sprintf("Player %s is already in the queue.", prospectivePlayer.DisplayName)
+		formattedMessage := fmt.Sprintf("%s is already in the queue.", prospectivePlayer.DisplayName)
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
 
 		return
@@ -124,7 +124,7 @@ func (d *Delegator) handleEnterQueue() {
 		return
 	}
 
-	formattedMessage := fmt.Sprintf("Player %s has entered the queue.", prospectivePlayer.DisplayName)
+	formattedMessage := fmt.Sprintf("%s has entered the queue.", prospectivePlayer.DisplayName)
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
 }
 
@@ -142,7 +142,7 @@ func (d *Delegator) handleLeaveQueue() {
 	if playerSuccessfullyRemoved {
 		d.Session.ChannelMessageSend(
 			d.DiscordUser.ChannelID,
-			fmt.Sprintf("Player %s has been removed from the queue.", prospectivePlayer.DisplayName),
+			fmt.Sprintf("%s has been removed from the queue.", prospectivePlayer.DisplayName),
 		)
 	}
 }
@@ -151,7 +151,7 @@ func (d Delegator) handleDisplayQueue() {
 	presentationqueue := d.queue.DisplayQueue()
 
 	if presentationqueue == "" {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "queue is empty")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue is empty")
 		return
 	}
 

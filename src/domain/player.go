@@ -10,6 +10,7 @@ type Player struct {
 	NumLosses   int
 	Mmr         float32
 	IsInGame    bool
+	IsAdmin     bool
 }
 
 type PlayerRepository interface {
@@ -25,8 +26,9 @@ func NewPlayer(id string) *Player {
 		MatchId:     id,
 		NumWins:     0,
 		NumLosses:   0,
-		Mmr:         0,
+		Mmr:         1000,
 		IsInGame:    false,
+		IsAdmin:     false,
 	}
 
 	return &p
