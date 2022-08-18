@@ -19,7 +19,6 @@ func (handler *PlayerHandler) Add(newPlayer domain.Player) {
 }
 
 func (handler *PlayerHandler) Remove(id string) {
-	panic(1)
 }
 
 func (handler *PlayerHandler) GetById(id string) domain.Player {

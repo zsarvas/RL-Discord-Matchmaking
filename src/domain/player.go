@@ -16,7 +16,6 @@ type Player struct {
 type PlayerRepository interface {
 	Store(player Player)
 	Get(id string) Player
-	Remove(id string)
 }
 
 func NewPlayer(id string) *Player {
