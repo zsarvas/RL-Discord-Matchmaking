@@ -6,7 +6,6 @@ import (
 
 type PlayerDataHandler interface {
 	Add(newPlayer domain.Player)
-	Remove(id string)
 	GetById(id string) domain.Player
 }
 
@@ -31,8 +30,4 @@ func (repo *PlayerRepo) Get(playerId string) domain.Player {
 	foundPlayer := repo.dbHandler.GetById(playerId)
 
 	return foundPlayer
-}
-
-func (repo *PlayerRepo) Remove(id string) {
-	repo.dbHandler.Remove(id)
 }

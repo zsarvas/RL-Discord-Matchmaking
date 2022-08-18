@@ -18,22 +18,20 @@ func (handler *PlayerHandler) Add(newPlayer domain.Player) {
 	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO players (Name, MMR, Wins, Losses) VALUES ('%v', '%f', '%d', '%d')`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses))
 }
 
-func (handler *PlayerHandler) Remove(id string) {
-}
-
 func (handler *PlayerHandler) GetById(id string) domain.Player {
 	record, err := handler.Conn.Query("SELECT * FROM players WHERE Name = ?", id)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	var index int
 	var name string
 	var mmr float64
 	var numWins int
 	var numLosses int
 
 	for record.Next() {
-		record.Scan(&name, &mmr, &numWins, &numLosses)
+		record.Scan(&index, &name, &mmr, &numWins, &numLosses)
 	}
 
 	if id != name {

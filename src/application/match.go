@@ -10,6 +10,7 @@ type Team = []domain.Player
 type Match struct {
 	TeamOne Team
 	TeamTwo Team
+	Won     bool
 }
 
 type MatchRepository interface {

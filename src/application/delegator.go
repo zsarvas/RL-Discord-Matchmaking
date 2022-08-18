@@ -48,7 +48,7 @@ func (d *Delegator) HandleIncomingCommand() {
 		d.handleDisplayQueue()
 	case REPORT_WIN:
 		// Not Implemented Fully
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Team wins.")
+		//d.handleMatchOver()
 	case MATT:
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 	case DISPLAY_MATCHES:
@@ -164,3 +164,45 @@ func (d *Delegator) handleQueuePop() bool {
 
 	return queueLength == popLength
 }
+
+/*func (d *Delegator) handleMatchOver() {
+	// need to get winners
+
+	winnerId := d.DiscordUser.Author.String()
+	activeMatches := d.MatchRepository.GetMatches()
+
+	for key := range activeMatches {
+		playerList1 := activeMatches[key].TeamOne
+		for x := range playerList1 {
+			if playerList1[x].Id == winnerId {
+				for v := range playerList1 {
+					playerList1[v].NumWins++
+					playerList1[v].Mmr += 10
+				}
+
+			}
+		}
+		playerList2 := activeMatches[key].TeamTwo
+		for x := range playerList2 {
+
+			if playerList2[x].Id == winnerId {
+				for v := range playerList2 {
+					playerList2[v].NumWins++
+					playerList2[v].Mmr += 10
+				}
+
+			}
+		}
+
+	}
+
+	winningPlayer := d.PlayerRepository.Get(winnerId)
+	//winningPlayer.NumWins += 1
+
+	//replace row in db
+	fmt.Printf("Zak's wins are : '%d'\n", winningPlayer.NumWins)
+	fmt.Printf("Zak's mmr is : '%f'\n", winningPlayer.Mmr)
+
+	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, winningPlayer.DisplayName+"'s team wins.")
+
+}*/
