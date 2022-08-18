@@ -94,6 +94,8 @@ func (d *Delegator) HandleIncomingCommand() {
 // If no player exists, makes a new one and returns it
 func (d Delegator) fetchPlayer() domain.Player {
 	incomingId := d.DiscordUser.Author.String()
+
+	//fmt.Printf("fixed id: '%v'", fixedId)
 	prospectivePlayer := d.PlayerRepository.Get(incomingId)
 
 	return prospectivePlayer

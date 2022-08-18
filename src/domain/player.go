@@ -8,7 +8,7 @@ type Player struct {
 	MatchId     string
 	NumWins     int
 	NumLosses   int
-	Mmr         float32
+	Mmr         float64
 	IsInGame    bool
 	IsAdmin     bool
 }

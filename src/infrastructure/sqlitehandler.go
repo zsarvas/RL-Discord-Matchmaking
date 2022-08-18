@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/zsarvas/RL-Discord-Matchmaking/interfaces"
 )
 
 type SqliteHandler struct {
@@ -16,7 +15,7 @@ func (handler *SqliteHandler) Execute(statement string) {
 	handler.Conn.Exec(statement)
 }
 
-func (handler *SqliteHandler) Query(statement string) interfaces.Row {
+func (handler *SqliteHandler) Query(statement string) Row {
 	rows, err := handler.Conn.Query(statement)
 	if err != nil {
 		fmt.Println(err)
