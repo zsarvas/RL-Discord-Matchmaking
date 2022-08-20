@@ -17,10 +17,13 @@ func NewMatchHandler() *MatchHandler {
 	return matchHandler
 }
 
-func (mh *MatchHandler) AddMatch(match application.Match) {
+func (mh *MatchHandler) AddMatch(match application.Match) uuid.UUID {
 	createdUuid := uuid.New()
 
 	mh.ActiveMatches[createdUuid] = match
+	match.MatchUid = createdUuid
+
+	return match.MatchUid
 }
 
 func (mh *MatchHandler) GetActiveMatches() map[uuid.UUID]application.Match {

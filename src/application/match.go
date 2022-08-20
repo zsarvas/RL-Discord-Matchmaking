@@ -8,12 +8,12 @@ import (
 type Team = []domain.Player
 
 type Match struct {
-	TeamOne Team
-	TeamTwo Team
-	Won     bool
+	TeamOne  Team
+	TeamTwo  Team
+	MatchUid uuid.UUID
 }
 
 type MatchRepository interface {
-	Add(match Match)
+	Add(match Match) uuid.UUID
 	GetMatches() map[uuid.UUID]Match
 }

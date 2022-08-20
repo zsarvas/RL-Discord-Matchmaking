@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
 )
@@ -15,7 +16,7 @@ type PlayerHandler struct {
 }
 
 func (handler *PlayerHandler) Add(newPlayer domain.Player) {
-	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO players (Name, MMR, Wins, Losses) VALUES ('%v', '%f', '%d', '%d')`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses))
+	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO players (Name, MMR, Wins, Losses, MatchUID) VALUES ('%v', '%f', '%d', '%d', '%s')`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId))
 }
 
 func (handler *PlayerHandler) GetById(id string) domain.Player {
@@ -29,9 +30,10 @@ func (handler *PlayerHandler) GetById(id string) domain.Player {
 	var mmr float64
 	var numWins int
 	var numLosses int
+	var matchId uuid.UUID
 
 	for record.Next() {
-		record.Scan(&index, &name, &mmr, &numWins, &numLosses)
+		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId)
 	}
 
 	if id != name {
@@ -45,6 +47,7 @@ func (handler *PlayerHandler) GetById(id string) domain.Player {
 		foundPlayer.NumWins = numWins
 		foundPlayer.NumLosses = numLosses
 		foundPlayer.Mmr = mmr
+		foundPlayer.MatchId = matchId
 
 		return *foundPlayer
 	}
@@ -77,11 +80,22 @@ func createTable(db *sql.DB) {
 		"Name" TEXT,
 		"MMR" INT,
 		"Wins" INT,
-		"Losses" INT);`
+		"Losses" INT,
+		"MatchUID" TEXT);`
 
 	query, err := db.Prepare(players_table)
 	if err != nil {
 		log.Fatal(err)
 	}
 	query.Exec()
+}
+
+func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
+	fmt.Println("I am in here")
+	handler.Conn.Exec("UPDATE players SET MMR = ?, Wins = ?, Losses = ? WHERE Name = ?", player.Mmr, player.NumWins, player.NumLosses, player.Id)
+}
+
+func (handler *PlayerHandler) SetMatchId(player domain.Player) {
+	fmt.Println("I am in here")
+	handler.Conn.Exec("UPDATE players SET MatchUID WHERE Name = ?", player.MatchId, player.Id)
 }

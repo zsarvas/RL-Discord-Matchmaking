@@ -1,12 +1,16 @@
 package interfaces
 
 import (
+	"fmt"
+
 	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
 )
 
 type PlayerDataHandler interface {
 	Add(newPlayer domain.Player)
 	GetById(id string) domain.Player
+	UpdatePlayer(player domain.Player)
+	SetMatchId(player domain.Player)
 }
 
 type PlayerDataRepo struct {
@@ -30,4 +34,13 @@ func (repo *PlayerRepo) Get(playerId string) domain.Player {
 	foundPlayer := repo.dbHandler.GetById(playerId)
 
 	return foundPlayer
+}
+
+func (repo *PlayerRepo) Update(player domain.Player) {
+	fmt.Printf("Look here\n")
+	repo.dbHandler.UpdatePlayer(player)
+}
+
+func (repo *PlayerRepo) SetMatch(player domain.Player) {
+	repo.dbHandler.SetMatchId(player)
 }
