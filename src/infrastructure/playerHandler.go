@@ -20,7 +20,7 @@ func (handler *PlayerHandler) Add(newPlayer domain.Player) {
 }
 
 func (handler *PlayerHandler) GetById(id string) domain.Player {
-	record, err := handler.Conn.Query("SELECT * FROM players WHERE Name = ?", id)
+	record, err := handler.Conn.Query(`SELECT * FROM players WHERE Name = ?`, id)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,11 +91,10 @@ func createTable(db *sql.DB) {
 }
 
 func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
-	fmt.Println("I am in here")
-	handler.Conn.Exec("UPDATE players SET MMR = ?, Wins = ?, Losses = ? WHERE Name = ?", player.Mmr, player.NumWins, player.NumLosses, player.Id)
+	handler.Conn.Exec(`UPDATE players SET MMR = ?, Wins = ?, Losses = ? WHERE Name = ?`, player.Mmr, player.NumWins, player.NumLosses, player.Id)
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {
-	fmt.Println("I am in here")
-	handler.Conn.Exec("UPDATE players SET MatchUID WHERE Name = ?", player.MatchId, player.Id)
+	handler.Conn.Exec(`UPDATE players SET MatchUID = ? WHERE Name = ?`, player.MatchId, player.Id)
+
 }

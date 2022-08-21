@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	//"math/rand"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -123,13 +122,10 @@ func (d *Delegator) handleEnterQueue() {
 			TeamTwo: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
 		}
 
-		fmt.Printf("length of team one is : '%d'", len(match.TeamOne))
-
 		//rand.Shuffle(len(match.TeamOne), func(i, j int) { match.TeamOne[i], match.TeamOne[j] = match.TeamOne[j], match.TeamOne[i] })
 		//rand.Shuffle(len(match.TeamTwo), func(i, j int) { match.TeamTwo[i], match.TeamTwo[j] = match.TeamTwo[j], match.TeamTwo[i] })
 
 		matchId := d.MatchRepository.Add(match)
-		fmt.Printf("match id from add function is : '%s'", matchId)
 
 		for _, player := range match.TeamOne {
 			player.MatchId = matchId
@@ -188,35 +184,25 @@ func (d *Delegator) handleMatchOver() {
 
 	winnerId := d.DiscordUser.Author.String()
 	winningPlayer := d.PlayerRepository.Get(winnerId)
-	fmt.Printf("the winners name is : '%s'", winningPlayer.Id)
 	winningMatch := winningPlayer.MatchId
-	var matchInfo = fmt.Sprintf("winning match id is : '%s'", winningMatch)
-	fmt.Println(matchInfo)
 
 	var foundWinner bool = false
 	var matchFound bool = false
-	var mmrAmount float64
 	activeMatches := d.MatchRepository.GetMatches()
-	fmt.Printf("length of activematches is : '%d'", len(activeMatches))
-	fmt.Printf("length of team is : '%d'", len(activeMatches[winningMatch].TeamOne))
 
 	for _, teams := range activeMatches[winningMatch].TeamOne {
-		fmt.Printf("teams.Id is : '%v'", teams.Id)
-		fmt.Printf("winnerId is : '%v'", winnerId)
 		if teams.Id == winnerId {
 			foundWinner = true
 			matchFound = true
-			mmrAmount = d.calcMmr(activeMatches[winningMatch].TeamOne, activeMatches[winningMatch].TeamTwo)
-			d.adjustMmrWin(activeMatches[winningMatch].TeamOne, mmrAmount)
-			d.adjustMmrLoss(activeMatches[winningMatch].TeamTwo, mmrAmount)
+
+			d.adjustMmr(activeMatches[winningMatch].TeamOne, activeMatches[winningMatch].TeamTwo)
 		}
 	}
 
 	if !foundWinner {
-		fmt.Printf("I am in here though...\n")
 		matchFound = true
-		d.adjustMmrLoss(activeMatches[winningMatch].TeamOne, mmrAmount)
-		d.adjustMmrWin(activeMatches[winningMatch].TeamTwo, mmrAmount)
+
+		d.adjustMmr(activeMatches[winningMatch].TeamTwo, activeMatches[winningMatch].TeamOne)
 	}
 
 	if !matchFound {
@@ -227,10 +213,11 @@ func (d *Delegator) handleMatchOver() {
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, winningPlayer.DisplayName+"'s team wins!  Leaderboard has been updated.")
 }
 
-func (d *Delegator) calcMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) float64 {
+func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
 
 	var winningSum float64 = 0
 	var losingSum float64 = 0
+	var mmrChange float64 = 0
 
 	for _, player := range winningPlayers {
 		winningSum += player.Mmr
@@ -240,33 +227,18 @@ func (d *Delegator) calcMmr(winningPlayers []domain.Player, losingPlayers []doma
 		losingSum += player.Mmr
 	}
 
-	fmt.Printf("Winning mmr sum is : '%f'\n", winningSum)
-	fmt.Printf("Losing mmr sum is : '%f'\n", losingSum)
-
-	return math.Max(20*(1-math.Pow(10, (winningSum/400))/((math.Pow(10, winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
-}
-
-func (d *Delegator) adjustMmrWin(winningPlayers []domain.Player, mmrChange float64) {
-
-	fmt.Printf("Mmr change is : '%f'\n", mmrChange)
+	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/((math.Pow(10, winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
 
 	for _, player := range winningPlayers {
 		player.Mmr += mmrChange
 		player.NumWins++
-		fmt.Printf("player num wins is : '%d'\n", player.NumWins)
 		d.PlayerRepository.Update(player)
 	}
 
-}
-
-func (d *Delegator) adjustMmrLoss(losingPLayers []domain.Player, mmrChange float64) {
-
-	fmt.Printf("Mmr change is : '%f'\n", mmrChange)
-
-	for _, player := range losingPLayers {
+	for _, player := range losingPlayers {
 		player.Mmr -= mmrChange
 		player.NumLosses++
-		fmt.Printf("player num losses is : '%d'\n", player.NumLosses)
 		d.PlayerRepository.Update(player)
 	}
+
 }

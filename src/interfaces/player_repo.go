@@ -1,8 +1,6 @@
 package interfaces
 
 import (
-	"fmt"
-
 	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
 )
 
@@ -37,7 +35,6 @@ func (repo *PlayerRepo) Get(playerId string) domain.Player {
 }
 
 func (repo *PlayerRepo) Update(player domain.Player) {
-	fmt.Printf("Look here\n")
 	repo.dbHandler.UpdatePlayer(player)
 }
 
