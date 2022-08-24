@@ -72,7 +72,7 @@ func (queue *Queue) DisplayQueue() string {
 	for idx, player := range queue.queue {
 		// Make a slice of wanted variables
 		placement := strconv.Itoa(idx + 1)
-		s := []string{placement, ". ", player.DisplayName}
+		s := []string{placement, ". ", player.MentionName}
 
 		numberedName := strings.Join(s, "")
 		displayQueue = append(displayQueue, numberedName)

@@ -1,12 +1,15 @@
 package application
 
 import (
-	"fmt"
 	"math"
+	"math/rand"
+	"strconv"
+	"time"
 
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
 )
 
@@ -18,6 +21,13 @@ type Delegator struct {
 	MatchRepository  MatchRepository
 	command          string
 }
+
+const (
+	PlayerAdd            int = 0
+	PlayerLeft           int = 1
+	PlayerShow           int = 3
+	PlayerAlreadyInQueue int = 4
+)
 
 func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
 	// could possible move this queue out of the 'constructor'
@@ -35,7 +45,11 @@ func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository)
 func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.MessageCreate) {
 	d.Session = s
 	d.DiscordUser = m
-	d.command = m.Content
+	d.command = strings.ToUpper(m.Content)
+
+	if strings.Contains(d.command, REPORT_WIN) {
+		d.command = REPORT_WIN
+	}
 
 	d.HandleIncomingCommand()
 }
@@ -49,44 +63,11 @@ func (d *Delegator) HandleIncomingCommand() {
 	case QUEUE_STATUS:
 		d.handleDisplayQueue()
 	case REPORT_WIN:
-		// Not Implemented Fully
 		d.handleMatchOver()
 	case MATT:
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 	case DISPLAY_MATCHES:
-		// Should refactor, put this logic in appropriate layer
-		activeMatches := d.MatchRepository.GetMatches()
-
-		if len(activeMatches) == 0 {
-			d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
-			return
-		}
-
-		message := []string{}
-
-		for k, v := range activeMatches {
-			stringifiedTeamOne := []string{"["}
-			stringifiedTeamTwo := []string{"["}
-
-			for _, player := range v.TeamOne {
-				stringifiedTeamOne = append(stringifiedTeamOne, player.DisplayName, ",")
-			}
-			for _, player := range v.TeamTwo {
-				stringifiedTeamTwo = append(stringifiedTeamTwo, player.DisplayName, ",")
-			}
-			stringifiedTeamOne = append(stringifiedTeamOne, "]")
-			stringifiedTeamTwo = append(stringifiedTeamTwo, "]")
-
-			matchInformation := fmt.Sprintf(
-				"Match id %s: between %s and %s \n", k.String(),
-				strings.Join(stringifiedTeamOne, " "),
-				strings.Join(stringifiedTeamTwo, " "),
-			)
-
-			message = append(message, matchInformation)
-		}
-
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, strings.Join(message, "\n"))
+		d.handleDisplayMatches()
 	default:
 		return
 	}
@@ -102,12 +83,12 @@ func (d Delegator) fetchPlayer() domain.Player {
 }
 
 func (d *Delegator) handleEnterQueue() {
+
 	prospectivePlayer := d.fetchPlayer()
+	prospectivePlayer.MentionName = d.DiscordUser.Author.Mention()
 
 	if d.queue.PlayerInQueue(prospectivePlayer) {
-		formattedMessage := fmt.Sprintf("%s is already in the queue.", prospectivePlayer.DisplayName)
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
-
+		d.changeQueueMessage(PlayerAlreadyInQueue)
 		return
 	}
 
@@ -116,14 +97,17 @@ func (d *Delegator) handleEnterQueue() {
 	queueIsPopping := d.handleQueuePop()
 
 	if queueIsPopping {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue POPPED!")
+		//d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue POPPED!\n")
+		//should say queue popped here then display teams
+
 		match := Match{
 			TeamOne: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
 			TeamTwo: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
 		}
 
-		//rand.Shuffle(len(match.TeamOne), func(i, j int) { match.TeamOne[i], match.TeamOne[j] = match.TeamOne[j], match.TeamOne[i] })
-		//rand.Shuffle(len(match.TeamTwo), func(i, j int) { match.TeamTwo[i], match.TeamTwo[j] = match.TeamTwo[j], match.TeamTwo[i] })
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(match.TeamOne), func(i, j int) { match.TeamOne[i], match.TeamOne[j] = match.TeamOne[j], match.TeamOne[i] })
+		rand.Shuffle(len(match.TeamTwo), func(i, j int) { match.TeamTwo[i], match.TeamTwo[j] = match.TeamTwo[j], match.TeamTwo[i] })
 
 		matchId := d.MatchRepository.Add(match)
 
@@ -136,11 +120,11 @@ func (d *Delegator) handleEnterQueue() {
 			player.MatchId = matchId
 			d.PlayerRepository.SetMatch(player)
 		}
+		//queue popped here
+		d.handleLobbyReady()
 		return
 	}
-
-	formattedMessage := fmt.Sprintf("%s has entered the queue.", prospectivePlayer.DisplayName)
-	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, formattedMessage)
+	d.changeQueueMessage(PlayerAdd)
 }
 
 func (d *Delegator) handleLeaveQueue() {
@@ -155,10 +139,7 @@ func (d *Delegator) handleLeaveQueue() {
 	playerSuccessfullyRemoved := d.queue.LeaveQueue(prospectivePlayer)
 
 	if playerSuccessfullyRemoved {
-		d.Session.ChannelMessageSend(
-			d.DiscordUser.ChannelID,
-			fmt.Sprintf("%s has been removed from the queue.", prospectivePlayer.DisplayName),
-		)
+		d.changeQueueMessage(PlayerLeft)
 	}
 }
 
@@ -170,7 +151,7 @@ func (d Delegator) handleDisplayQueue() {
 		return
 	}
 
-	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, presentationqueue)
+	d.displayQueueMessage()
 }
 
 func (d *Delegator) handleQueuePop() bool {
@@ -185,6 +166,11 @@ func (d *Delegator) handleMatchOver() {
 	winnerId := d.DiscordUser.Author.String()
 	winningPlayer := d.PlayerRepository.Get(winnerId)
 	winningMatch := winningPlayer.MatchId
+
+	if winningPlayer.MatchId == uuid.Nil {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You are not currently in a match.")
+		return
+	}
 
 	var foundWinner bool = false
 	var matchFound bool = false
@@ -209,8 +195,9 @@ func (d *Delegator) handleMatchOver() {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Matches to report.")
 		return
 	}
-
-	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, winningPlayer.DisplayName+"'s team wins!  Leaderboard has been updated.")
+	d.displayWinMessage()
+	delete(activeMatches, winningMatch)
+	//d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, winningPlayer.DisplayName+"'s team wins!  Leaderboard has been updated.")
 }
 
 func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
@@ -232,13 +219,219 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 	for _, player := range winningPlayers {
 		player.Mmr += mmrChange
 		player.NumWins++
+		player.MatchId = uuid.Nil
 		d.PlayerRepository.Update(player)
 	}
 
 	for _, player := range losingPlayers {
 		player.Mmr -= mmrChange
 		player.NumLosses++
+		player.MatchId = uuid.Nil
 		d.PlayerRepository.Update(player)
+	}
+
+}
+
+func (d *Delegator) handleLobbyReady() {
+	activeMatches := d.MatchRepository.GetMatches()
+
+	if len(activeMatches) == 0 {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+		return
+	}
+
+	var team1 string
+	var team2 string
+
+	for _, v := range activeMatches {
+		stringifiedTeamOne := []string{}
+		stringifiedTeamTwo := []string{}
+
+		for _, player := range v.TeamOne {
+			stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
+		}
+		for _, player := range v.TeamTwo {
+			stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
+		}
+		//stringifiedTeamOne = stringifiedTeamOne[:len(stringifiedTeamOne)-1]
+		//stringifiedTeamOne = append(stringifiedTeamOne, "]")
+		//stringifiedTeamTwo = stringifiedTeamTwo[:len(stringifiedTeamTwo)-1]
+		//stringifiedTeamTwo = append(stringifiedTeamTwo, "]")
+
+		team1 = strings.Join(stringifiedTeamOne, "\n")
+		team2 = strings.Join(stringifiedTeamTwo, "\n")
+
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Author:      &discordgo.MessageEmbedAuthor{},
+		Color:       0x00ff00, // Green
+		Description: "The following teams will now play:",
+		Fields: []*discordgo.MessageEmbedField{
+			&discordgo.MessageEmbedField{
+				Name:   "-Team 1-",
+				Value:  team1,
+				Inline: true,
+			},
+			&discordgo.MessageEmbedField{
+				Name:   "-Team 2-",
+				Value:  team2,
+				Inline: true,
+			},
+		},
+		Image: &discordgo.MessageEmbedImage{
+			URL: "",
+		},
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: "",
+		},
+		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:     "Queue popped, lobby is now ready!",
+	}
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+}
+
+func (d *Delegator) changeQueueMessage(messageConst int) {
+
+	queueLength := d.queue.GetQueueLength()
+	var message string
+
+	switch messageConst {
+	case PlayerAdd:
+		message = d.DiscordUser.Author.Mention() + " has entered the queue."
+	case PlayerLeft:
+		message = d.DiscordUser.Author.Mention() + " has left the queue."
+	case PlayerAlreadyInQueue:
+		message = d.DiscordUser.Author.Mention() + " is already in the queue."
+	default:
+		return
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Author:      &discordgo.MessageEmbedAuthor{},
+		Color:       0x00ff00, // Green
+		Description: message,
+		Image: &discordgo.MessageEmbedImage{
+			URL: "",
+		},
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: "",
+		},
+		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:     strconv.Itoa(queueLength) + " players are in the queue.",
+	}
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+}
+
+func (d *Delegator) displayQueueMessage() {
+
+	var message string = d.queue.DisplayQueue()
+
+	embed := &discordgo.MessageEmbed{
+		Author:      &discordgo.MessageEmbedAuthor{},
+		Color:       0x00ff00, // Green
+		Description: message,
+		Fields:      []*discordgo.MessageEmbedField{},
+		Image: &discordgo.MessageEmbedImage{
+			URL: "",
+		},
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: "",
+		},
+		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:     "Queue status",
+	}
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+}
+
+func (d *Delegator) displayWinMessage() {
+
+	title := d.DiscordUser.Author.Username + "'s team wins!"
+	message := "Leaderboard has been updated."
+	image := d.DiscordUser.Author.AvatarURL("240")
+
+	embed := &discordgo.MessageEmbed{
+		Author:      &discordgo.MessageEmbedAuthor{},
+		Color:       0x00ff00, // Green
+		Description: message,
+		Fields:      []*discordgo.MessageEmbedField{},
+		Image: &discordgo.MessageEmbedImage{
+			URL: "",
+		},
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: image,
+		},
+		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:     title,
+	}
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+}
+
+func (d *Delegator) handleDisplayMatches() {
+	activeMatches := d.MatchRepository.GetMatches()
+
+	if len(activeMatches) == 0 {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+		return
+	}
+
+	var team1 string
+	var team2 string
+	var title string
+	var int int = 0
+
+	for _, v := range activeMatches {
+		stringifiedTeamOne := []string{}
+		stringifiedTeamTwo := []string{}
+		int++
+
+		if int == 1 {
+			title = "Current Matches"
+		} else {
+			title = ""
+		}
+
+		for _, player := range v.TeamOne {
+			stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
+		}
+		for _, player := range v.TeamTwo {
+			stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
+		}
+		//stringifiedTeamOne = stringifiedTeamOne[:len(stringifiedTeamOne)-1]
+		//stringifiedTeamOne = append(stringifiedTeamOne, "]")
+		//stringifiedTeamTwo = stringifiedTeamTwo[:len(stringifiedTeamTwo)-1]
+		//stringifiedTeamTwo = append(stringifiedTeamTwo, "]")
+
+		team1 = strings.Join(stringifiedTeamOne, "\n")
+		team2 = strings.Join(stringifiedTeamTwo, "\n")
+
+		embed := &discordgo.MessageEmbed{
+			Author:      &discordgo.MessageEmbedAuthor{},
+			Color:       0x00ff00, // Green
+			Description: "Match ID:" + v.MatchUid.String(),
+			Fields: []*discordgo.MessageEmbedField{
+				&discordgo.MessageEmbedField{
+					Name:   "-Team 1-",
+					Value:  team1,
+					Inline: true,
+				},
+				&discordgo.MessageEmbedField{
+					Name:   "-Team 2-",
+					Value:  team2,
+					Inline: true,
+				},
+			},
+			Image: &discordgo.MessageEmbedImage{
+				URL: "",
+			},
+			Thumbnail: &discordgo.MessageEmbedThumbnail{
+				URL: "",
+			},
+			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+			Title:     title,
+		}
+
+		d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 	}
 
 }

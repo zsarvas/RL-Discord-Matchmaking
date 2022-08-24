@@ -8,6 +8,7 @@ import (
 
 type Player struct {
 	Id          string
+	MentionName string
 	DisplayName string
 	MatchId     uuid.UUID
 	NumWins     int
@@ -27,6 +28,7 @@ type PlayerRepository interface {
 func NewPlayer(id string) *Player {
 	p := Player{
 		Id:          id,
+		MentionName: "",
 		DisplayName: strings.Split(id, "#")[0],
 		MatchId:     uuid.Nil,
 		NumWins:     0,
