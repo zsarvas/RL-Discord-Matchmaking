@@ -2,7 +2,6 @@ package application
 
 import (
 	"math"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -27,6 +26,7 @@ const (
 	PlayerLeft           int = 1
 	PlayerShow           int = 3
 	PlayerAlreadyInQueue int = 4
+	PlayerAlreadyInMatch int = 5
 )
 
 func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
@@ -92,22 +92,21 @@ func (d *Delegator) handleEnterQueue() {
 		return
 	}
 
+	if prospectivePlayer.MatchId != uuid.Nil {
+		d.changeQueueMessage(PlayerAlreadyInMatch)
+		return
+	}
+
 	d.queue.Enqueue(prospectivePlayer)
 
 	queueIsPopping := d.handleQueuePop()
 
 	if queueIsPopping {
-		//d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue POPPED!\n")
-		//should say queue popped here then display teams
-
+		d.queue.RandomizeQueue()
 		match := Match{
 			TeamOne: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
 			TeamTwo: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
 		}
-
-		rand.Seed(time.Now().UnixNano())
-		rand.Shuffle(len(match.TeamOne), func(i, j int) { match.TeamOne[i], match.TeamOne[j] = match.TeamOne[j], match.TeamOne[i] })
-		rand.Shuffle(len(match.TeamTwo), func(i, j int) { match.TeamTwo[i], match.TeamTwo[j] = match.TeamTwo[j], match.TeamTwo[i] })
 
 		matchId := d.MatchRepository.Add(match)
 
@@ -197,7 +196,6 @@ func (d *Delegator) handleMatchOver() {
 	}
 	d.displayWinMessage()
 	delete(activeMatches, winningMatch)
-	//d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, winningPlayer.DisplayName+"'s team wins!  Leaderboard has been updated.")
 }
 
 func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
@@ -249,23 +247,25 @@ func (d *Delegator) handleLobbyReady() {
 
 		for _, player := range v.TeamOne {
 			stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
+			stringifiedTeamOne = append(stringifiedTeamOne, " [")
+			stringifiedTeamOne = append(stringifiedTeamOne, strconv.Itoa(int(math.Round(player.Mmr))))
+			stringifiedTeamOne = append(stringifiedTeamOne, "]\n")
 		}
 		for _, player := range v.TeamTwo {
 			stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
+			stringifiedTeamTwo = append(stringifiedTeamTwo, " [")
+			stringifiedTeamTwo = append(stringifiedTeamTwo, strconv.Itoa(int(math.Round(player.Mmr))))
+			stringifiedTeamTwo = append(stringifiedTeamTwo, "]\n")
 		}
-		//stringifiedTeamOne = stringifiedTeamOne[:len(stringifiedTeamOne)-1]
-		//stringifiedTeamOne = append(stringifiedTeamOne, "]")
-		//stringifiedTeamTwo = stringifiedTeamTwo[:len(stringifiedTeamTwo)-1]
-		//stringifiedTeamTwo = append(stringifiedTeamTwo, "]")
 
-		team1 = strings.Join(stringifiedTeamOne, "\n")
-		team2 = strings.Join(stringifiedTeamTwo, "\n")
+		team1 = strings.Join(stringifiedTeamOne, "")
+		team2 = strings.Join(stringifiedTeamTwo, "")
 
 	}
 
 	embed := &discordgo.MessageEmbed{
 		Author:      &discordgo.MessageEmbedAuthor{},
-		Color:       0x00ff00, // Green
+		Color:       0xff0000, // Red
 		Description: "The following teams will now play:",
 		Fields: []*discordgo.MessageEmbedField{
 			&discordgo.MessageEmbedField{
@@ -295,6 +295,19 @@ func (d *Delegator) changeQueueMessage(messageConst int) {
 
 	queueLength := d.queue.GetQueueLength()
 	var message string
+	var queueStatus string
+	var color int
+
+	//could also be a switch
+	if queueLength == 1 {
+		color = 0x00ff00 // Green
+	} else if queueLength == 2 {
+		color = 0xffff00 // Yellow
+	} else if queueLength == 3 {
+		color = 0xffa500 // Orange
+	}
+
+	queueStatus = strconv.Itoa(queueLength) + " players are in the queue."
 
 	switch messageConst {
 	case PlayerAdd:
@@ -303,13 +316,16 @@ func (d *Delegator) changeQueueMessage(messageConst int) {
 		message = d.DiscordUser.Author.Mention() + " has left the queue."
 	case PlayerAlreadyInQueue:
 		message = d.DiscordUser.Author.Mention() + " is already in the queue."
+	case PlayerAlreadyInMatch:
+		message = "Cannot queue while in a match. " + d.DiscordUser.Author.Mention() + " is already in a match."
+		queueStatus = ""
 	default:
 		return
 	}
 
 	embed := &discordgo.MessageEmbed{
 		Author:      &discordgo.MessageEmbedAuthor{},
-		Color:       0x00ff00, // Green
+		Color:       color,
 		Description: message,
 		Image: &discordgo.MessageEmbedImage{
 			URL: "",
@@ -318,7 +334,7 @@ func (d *Delegator) changeQueueMessage(messageConst int) {
 			URL: "",
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-		Title:     strconv.Itoa(queueLength) + " players are in the queue.",
+		Title:     queueStatus,
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -378,14 +394,14 @@ func (d *Delegator) handleDisplayMatches() {
 	var team1 string
 	var team2 string
 	var title string
-	var int int = 0
+	var num int
 
 	for _, v := range activeMatches {
 		stringifiedTeamOne := []string{}
 		stringifiedTeamTwo := []string{}
-		int++
+		num++
 
-		if int == 1 {
+		if num == 1 {
 			title = "Current Matches"
 		} else {
 			title = ""
@@ -393,22 +409,29 @@ func (d *Delegator) handleDisplayMatches() {
 
 		for _, player := range v.TeamOne {
 			stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
+			stringifiedTeamOne = append(stringifiedTeamOne, " [")
+			stringifiedTeamOne = append(stringifiedTeamOne, strconv.Itoa(int(math.Round(player.Mmr))))
+			stringifiedTeamOne = append(stringifiedTeamOne, "]\n")
 		}
 		for _, player := range v.TeamTwo {
 			stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
+			stringifiedTeamTwo = append(stringifiedTeamTwo, " [")
+			stringifiedTeamTwo = append(stringifiedTeamTwo, strconv.Itoa(int(math.Round(player.Mmr))))
+			stringifiedTeamTwo = append(stringifiedTeamTwo, "]\n")
+
 		}
 		//stringifiedTeamOne = stringifiedTeamOne[:len(stringifiedTeamOne)-1]
 		//stringifiedTeamOne = append(stringifiedTeamOne, "]")
 		//stringifiedTeamTwo = stringifiedTeamTwo[:len(stringifiedTeamTwo)-1]
 		//stringifiedTeamTwo = append(stringifiedTeamTwo, "]")
 
-		team1 = strings.Join(stringifiedTeamOne, "\n")
-		team2 = strings.Join(stringifiedTeamTwo, "\n")
+		team1 = strings.Join(stringifiedTeamOne, "")
+		team2 = strings.Join(stringifiedTeamTwo, "")
 
 		embed := &discordgo.MessageEmbed{
 			Author:      &discordgo.MessageEmbedAuthor{},
 			Color:       0x00ff00, // Green
-			Description: "Match ID:" + v.MatchUid.String(),
+			Description: "Match ID: " + v.MatchUid.String(),
 			Fields: []*discordgo.MessageEmbedField{
 				&discordgo.MessageEmbedField{
 					Name:   "-Team 1-",

@@ -91,7 +91,7 @@ func createTable(db *sql.DB) {
 }
 
 func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
-	handler.Conn.Exec(`UPDATE players SET MMR = ?, Wins = ?, Losses = ? WHERE Name = ?`, player.Mmr, player.NumWins, player.NumLosses, player.Id)
+	handler.Conn.Exec(`UPDATE players SET MMR = ?, Wins = ?, Losses = ?, MatchUID = ? WHERE Name = ?`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.Id)
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {

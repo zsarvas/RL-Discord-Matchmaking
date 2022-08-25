@@ -20,8 +20,8 @@ func NewMatchHandler() *MatchHandler {
 func (mh *MatchHandler) AddMatch(match application.Match) uuid.UUID {
 	createdUuid := uuid.New()
 
-	mh.ActiveMatches[createdUuid] = match
 	match.MatchUid = createdUuid
+	mh.ActiveMatches[createdUuid] = match
 
 	return match.MatchUid
 }

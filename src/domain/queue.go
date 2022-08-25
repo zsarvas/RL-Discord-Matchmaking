@@ -1,8 +1,10 @@
 package domain
 
 import (
+	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Queue struct {
@@ -89,4 +91,9 @@ func (queue *Queue) GetPopLength() int {
 
 func (queue *Queue) GetQueueLength() int {
 	return len(queue.queue)
+}
+
+func (queue *Queue) RandomizeQueue() {
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(queue.queue), func(i, j int) { queue.queue[i], queue.queue[j] = queue.queue[j], queue.queue[i] })
 }
