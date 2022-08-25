@@ -1,32 +1,41 @@
 package domain
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 type Player struct {
 	Id          string
+	MentionName string
 	DisplayName string
-	MatchId     string
+	MatchId     uuid.UUID
 	NumWins     int
 	NumLosses   int
-	Mmr         float32
+	Mmr         float64
 	IsInGame    bool
+	IsAdmin     bool
 }
 
 type PlayerRepository interface {
 	Store(player Player)
 	Get(id string) Player
-	Remove(id string)
+	Update(player Player)
+	SetMatch(player Player)
 }
 
 func NewPlayer(id string) *Player {
 	p := Player{
 		Id:          id,
+		MentionName: "",
 		DisplayName: strings.Split(id, "#")[0],
-		MatchId:     id,
+		MatchId:     uuid.Nil,
 		NumWins:     0,
 		NumLosses:   0,
-		Mmr:         0,
+		Mmr:         1000,
 		IsInGame:    false,
+		IsAdmin:     false,
 	}
 
 	return &p

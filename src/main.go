@@ -17,6 +17,7 @@ import (
 )
 
 var Token string
+var sqlPath string
 var playerRepository *interfaces.PlayerRepo
 var matchRepository *interfaces.MatchRepo
 
@@ -37,11 +38,14 @@ func init() {
 		log.Fatal(err)
 	}
 
+	sqlPath = os.Getenv("SQL_PATH")
+
 	// Data Initialization
-	playerRepoHandler := infrastructure.NewPlayerHandler()
+	playerRepoHandler := infrastructure.NewPlayerHandler(sqlPath)
 	matchRepoHandler := infrastructure.NewMatchHandler()
 	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
 	matchRepository = interfaces.NewMatchDataRepo(matchRepoHandler)
+
 }
 
 func main() {
@@ -67,7 +71,7 @@ func main() {
 
 	// Wait for kill signal to terminate
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGTERM)
 
 	<-quit
 	clientConnection.Close()

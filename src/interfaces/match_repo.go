@@ -6,7 +6,7 @@ import (
 )
 
 type MatchDataHandler interface {
-	AddMatch(match application.Match)
+	AddMatch(match application.Match) uuid.UUID
 	GetActiveMatches() map[uuid.UUID]application.Match
 }
 
@@ -23,8 +23,8 @@ func NewMatchDataRepo(repoHandler MatchDataHandler) *MatchRepo {
 	return matchRepo
 }
 
-func (repo *MatchRepo) Add(match application.Match) {
-	repo.dataHandler.AddMatch(match)
+func (repo *MatchRepo) Add(match application.Match) uuid.UUID {
+	return repo.dataHandler.AddMatch(match)
 }
 
 func (repo *MatchRepo) GetMatches() map[uuid.UUID]application.Match {
