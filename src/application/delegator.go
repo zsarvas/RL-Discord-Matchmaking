@@ -64,6 +64,10 @@ func (d *Delegator) HandleIncomingCommand() {
 		d.handleDisplayQueue()
 	case REPORT_WIN:
 		d.handleMatchOver()
+	case CLEAR_QUEUE:
+		d.handleClearQueue()
+	case DISPLAY_HELP:
+		d.handleDisplayHelp()
 	case MATT:
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 	case DISPLAY_MATCHES:
@@ -212,7 +216,7 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 		losingSum += player.Mmr
 	}
 
-	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/((math.Pow(10, winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
+	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/(math.Pow(10, (winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
 
 	for _, player := range winningPlayers {
 		player.Mmr += mmrChange
@@ -287,6 +291,10 @@ func (d *Delegator) handleLobbyReady() {
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://thumbs.dreamstime.com/b/cd-technology-4414251.jpg",
+		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -335,6 +343,10 @@ func (d *Delegator) changeQueueMessage(messageConst int) {
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     queueStatus,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://thumbs.dreamstime.com/b/cd-technology-4414251.jpg",
+		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -356,6 +368,10 @@ func (d *Delegator) displayQueueMessage() {
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue status",
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://thumbs.dreamstime.com/b/cd-technology-4414251.jpg",
+		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -379,6 +395,10 @@ func (d *Delegator) displayWinMessage() {
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://thumbs.dreamstime.com/b/cd-technology-4414251.jpg",
+		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -452,9 +472,73 @@ func (d *Delegator) handleDisplayMatches() {
 			},
 			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 			Title:     title,
+			Footer: &discordgo.MessageEmbedFooter{
+				Text:    "Created by Zach Sarvas and Ritter Gustave",
+				IconURL: "https://thumbs.dreamstime.com/b/cd-technology-4414251.jpg",
+			},
 		}
 
 		d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 	}
+
+}
+
+func (d *Delegator) handleClearQueue() {
+
+	author := d.DiscordUser.Author.String()
+	queueLength := d.queue.GetQueueLength()
+
+	if author == "Zak#9050" {
+		for queueLength > 0 {
+			d.queue.Dequeue()
+		}
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue has been cleared.")
+	} else {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You do not have permission to execute this command.")
+	}
+
+}
+
+func (d *Delegator) handleDisplayHelp() {
+
+	commands := []string{}
+	active := "**!activematches**"
+	activeDesc := "View all active matches (matches with no report yet).\n"
+	clear := "**!clear**"
+	clearDesc := "Clear the queue.\n"
+	help := "**!help**"
+	helpDesc := "This menu.\n"
+	leave := "**!leave**"
+	leaveDesc := "Leave the queue.\n"
+	report := "**!report win**"
+	reportDesc := "Report a match win.\n"
+	status := "**!status**"
+	statusDesc := "List the players in the queue.\n"
+	q := "**!q**"
+	qDesc := "Join the queue.\n"
+	title := "Help"
+
+	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc)
+	message := strings.Join(commands, "\n")
+
+	embed := &discordgo.MessageEmbed{
+		Author:      &discordgo.MessageEmbedAuthor{},
+		Color:       0x00ff00, // Green
+		Description: message,
+		Fields:      []*discordgo.MessageEmbedField{},
+		Image: &discordgo.MessageEmbedImage{
+			URL: "",
+		},
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: "",
+		},
+		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:     title,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://thumbs.dreamstime.com/b/cd-technology-4414251.jpg",
+		},
+	}
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 
 }
