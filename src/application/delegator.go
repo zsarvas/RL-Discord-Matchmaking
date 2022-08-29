@@ -22,11 +22,14 @@ type Delegator struct {
 }
 
 const (
-	PlayerAdd            int = 0
-	PlayerLeft           int = 1
-	PlayerShow           int = 3
-	PlayerAlreadyInQueue int = 4
-	PlayerAlreadyInMatch int = 5
+	PLAYER_ADD              int = 0
+	PLAYER_LEFT             int = 1
+	PLAYER_SHOW             int = 3
+	PLAYER_ALREADY_IN_QUEUE int = 4
+	PLAYER_ALREADY_IN_MATCH int = 5
+	PLAYER_NOT_IN_QUEUE     int = 6
+	DISPLAY_QUEUE           int = 7
+	DISPLAY_HELP_MENU       int = 8
 )
 
 func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
@@ -64,6 +67,10 @@ func (d *Delegator) HandleIncomingCommand() {
 		d.handleDisplayQueue()
 	case REPORT_WIN:
 		d.handleMatchOver()
+	case CLEAR_QUEUE:
+		d.handleClearQueue()
+	case DISPLAY_HELP:
+		d.handleDisplayHelp()
 	case MATT:
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 	case DISPLAY_MATCHES:
@@ -77,7 +84,9 @@ func (d *Delegator) HandleIncomingCommand() {
 // If no player exists, makes a new one and returns it
 func (d Delegator) fetchPlayer() domain.Player {
 	incomingId := d.DiscordUser.Author.String()
+	mention := d.DiscordUser.Author.Mention()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId)
+	prospectivePlayer.MentionName = mention
 
 	return prospectivePlayer
 }
@@ -85,15 +94,14 @@ func (d Delegator) fetchPlayer() domain.Player {
 func (d *Delegator) handleEnterQueue() {
 
 	prospectivePlayer := d.fetchPlayer()
-	prospectivePlayer.MentionName = d.DiscordUser.Author.Mention()
 
 	if d.queue.PlayerInQueue(prospectivePlayer) {
-		d.changeQueueMessage(PlayerAlreadyInQueue)
+		d.changeQueueMessage(PLAYER_ALREADY_IN_QUEUE, prospectivePlayer)
 		return
 	}
 
 	if prospectivePlayer.MatchId != uuid.Nil {
-		d.changeQueueMessage(PlayerAlreadyInMatch)
+		d.changeQueueMessage(PLAYER_ALREADY_IN_MATCH, prospectivePlayer)
 		return
 	}
 
@@ -123,34 +131,39 @@ func (d *Delegator) handleEnterQueue() {
 		d.handleLobbyReady()
 		return
 	}
-	d.changeQueueMessage(PlayerAdd)
+	d.changeQueueMessage(PLAYER_ADD, prospectivePlayer)
 }
 
 func (d *Delegator) handleLeaveQueue() {
 	incomingId := d.DiscordUser.Author.String()
+	mention := d.DiscordUser.Author.Mention()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId)
+	prospectivePlayer.MentionName = mention
 
 	if !d.queue.PlayerInQueue(prospectivePlayer) {
 		// Player isn't in queue, exit
+		d.changeQueueMessage(PLAYER_NOT_IN_QUEUE, prospectivePlayer)
 		return
 	}
 
 	playerSuccessfullyRemoved := d.queue.LeaveQueue(prospectivePlayer)
 
 	if playerSuccessfullyRemoved {
-		d.changeQueueMessage(PlayerLeft)
+		d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
 	}
 }
 
 func (d Delegator) handleDisplayQueue() {
 	presentationqueue := d.queue.DisplayQueue()
+	incomingId := d.DiscordUser.Author.String()
+	callingPlayer := d.PlayerRepository.Get(incomingId)
 
 	if presentationqueue == "" {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue is empty")
 		return
 	}
 
-	d.displayQueueMessage()
+	d.changeQueueMessage(DISPLAY_QUEUE, callingPlayer)
 }
 
 func (d *Delegator) handleQueuePop() bool {
@@ -212,7 +225,7 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 		losingSum += player.Mmr
 	}
 
-	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/((math.Pow(10, winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
+	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/(math.Pow(10, (winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
 
 	for _, player := range winningPlayers {
 		player.Mmr += mmrChange
@@ -287,15 +300,37 @@ func (d *Delegator) handleLobbyReady() {
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
 
-func (d *Delegator) changeQueueMessage(messageConst int) {
+func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 
 	queueLength := d.queue.GetQueueLength()
+	commands := []string{}
+	active := "**!activematches**"
+	activeDesc := "View all active matches (matches with no report yet).\n"
+	clear := "**!clear**"
+	clearDesc := "Clear the queue.\n"
+	help := "**!help**"
+	helpDesc := "This menu.\n"
+	leave := "**!leave**"
+	leaveDesc := "Leave the queue.\n"
+	report := "**!report win**"
+	reportDesc := "Report a match win.\n"
+	status := "**!status**"
+	statusDesc := "List the players in the queue.\n"
+	q := "**!q**"
+	qDesc := "Join the queue.\n"
+
+	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc)
+
 	var message string
-	var queueStatus string
+	var title string
 	var color int
 
 	//could also be a switch
@@ -307,18 +342,27 @@ func (d *Delegator) changeQueueMessage(messageConst int) {
 		color = 0xffa500 // Orange
 	}
 
-	queueStatus = strconv.Itoa(queueLength) + " players are in the queue."
+	title = strconv.Itoa(queueLength) + " players are in the queue."
 
 	switch messageConst {
-	case PlayerAdd:
-		message = d.DiscordUser.Author.Mention() + " has entered the queue."
-	case PlayerLeft:
-		message = d.DiscordUser.Author.Mention() + " has left the queue."
-	case PlayerAlreadyInQueue:
-		message = d.DiscordUser.Author.Mention() + " is already in the queue."
-	case PlayerAlreadyInMatch:
-		message = "Cannot queue while in a match. " + d.DiscordUser.Author.Mention() + " is already in a match."
-		queueStatus = ""
+	case PLAYER_ADD:
+		message = player.MentionName + " has entered the queue."
+	case PLAYER_LEFT:
+		message = player.MentionName + " has left the queue."
+	case PLAYER_ALREADY_IN_QUEUE:
+		message = player.MentionName + " is already in the queue."
+	case PLAYER_ALREADY_IN_MATCH:
+		message = "Cannot queue while in a match. " + player.MentionName + " is already in a match."
+		title = ""
+	case DISPLAY_QUEUE:
+		message = d.queue.DisplayQueue()
+		title = "Queue status"
+	case PLAYER_NOT_IN_QUEUE:
+		message = "Type !q to join the queue."
+		title = "You are not currently in the queue."
+	case DISPLAY_HELP_MENU:
+		title = "**Help**"
+		message = strings.Join(commands, "\n")
 	default:
 		return
 	}
@@ -334,28 +378,11 @@ func (d *Delegator) changeQueueMessage(messageConst int) {
 			URL: "",
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-		Title:     queueStatus,
-	}
-	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
-}
-
-func (d *Delegator) displayQueueMessage() {
-
-	var message string = d.queue.DisplayQueue()
-
-	embed := &discordgo.MessageEmbed{
-		Author:      &discordgo.MessageEmbedAuthor{},
-		Color:       0x00ff00, // Green
-		Description: message,
-		Fields:      []*discordgo.MessageEmbedField{},
-		Image: &discordgo.MessageEmbedImage{
-			URL: "",
+		Title:     title,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
 		},
-		Thumbnail: &discordgo.MessageEmbedThumbnail{
-			URL: "",
-		},
-		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-		Title:     "Queue status",
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -379,6 +406,10 @@ func (d *Delegator) displayWinMessage() {
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Created by Zach Sarvas and Ritter Gustave",
+			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
@@ -452,9 +483,40 @@ func (d *Delegator) handleDisplayMatches() {
 			},
 			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 			Title:     title,
+			Footer: &discordgo.MessageEmbedFooter{
+				Text:    "Created by Zach Sarvas and Ritter Gustave",
+				IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+			},
 		}
 
 		d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 	}
+
+}
+
+func (d *Delegator) handleClearQueue() {
+
+	author := d.DiscordUser.Author.String()
+	queueLength := d.queue.GetQueueLength()
+
+	if author == "Zak#9050" {
+		for queueLength > 0 {
+			d.queue.Dequeue()
+			queueLength = d.queue.GetQueueLength()
+		}
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue has been cleared.")
+	} else {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You do not have permission to execute this command.")
+	}
+
+}
+
+func (d *Delegator) handleDisplayHelp() {
+	incomingId := d.DiscordUser.Author.String()
+	mention := d.DiscordUser.Author.Mention()
+	prospectivePlayer := d.PlayerRepository.Get(incomingId)
+	prospectivePlayer.MentionName = mention
+
+	d.changeQueueMessage(DISPLAY_HELP_MENU, prospectivePlayer)
 
 }
