@@ -58,6 +58,7 @@ func main() {
 	// Create application bot delegator
 	// Register handler Function
 	d := application.NewDelegator(playerRepository, matchRepository)
+
 	clientConnection.AddHandler(d.InitiateDelegator)
 
 	// Open websocket begin listening handle error
@@ -67,6 +68,7 @@ func main() {
 		return
 	}
 
+	clientConnection.UpdateListeningStatus("your commands.")
 	fmt.Println("Bot is open and listening...")
 
 	// Wait for kill signal to terminate

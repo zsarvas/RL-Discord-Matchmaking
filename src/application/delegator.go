@@ -54,6 +54,8 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 		d.command = REPORT_WIN
 	}
 
+	d.Session.State.Settings.Status = "Playing Rocket League"
+
 	d.HandleIncomingCommand()
 }
 
