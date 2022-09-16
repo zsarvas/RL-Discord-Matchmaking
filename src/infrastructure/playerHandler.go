@@ -2,12 +2,15 @@ package infrastructure
 
 import (
 	"database/sql"
+
 	"fmt"
 	"log"
 	"strings"
 
+	_ "github.com/lib/pq"
+
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/zsarvas/RL-Discord-Matchmaking/domain"
 )
 
@@ -16,11 +19,12 @@ type PlayerHandler struct {
 }
 
 func (handler *PlayerHandler) Add(newPlayer domain.Player) {
-	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO players (Name, MMR, Wins, Losses, MatchUID) VALUES ('%v', '%f', '%d', '%d', '%s')`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId))
+	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID") VALUES ('%v', '%f', '%d', '%d', '%s');`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId))
 }
 
 func (handler *PlayerHandler) GetById(id string) domain.Player {
-	record, err := handler.Conn.Query(`SELECT * FROM players WHERE Name = ?`, id)
+	record, err := handler.Conn.Query(`SELECT * FROM rocketleague WHERE "Name" = $1;`, id)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,48 +57,26 @@ func (handler *PlayerHandler) GetById(id string) domain.Player {
 	}
 }
 
-func NewPlayerHandler(dbFileName string) *PlayerHandler {
-	connection, err := sql.Open("sqlite3", dbFileName)
+func NewPlayerHandler(connStr string) *PlayerHandler {
+
+	connection, err := sql.Open("postgres", connStr)
+
+	//this works
+	//post, _, err := client.From("rocketleague").Insert(map[string]string{"Name": "Zach"}, true, "", "", "").ExecuteString()
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	pingError := connection.Ping()
-
-	if pingError != nil {
-		log.Fatal(pingError)
+		fmt.Println(err)
 	}
 
 	plyrHandler := &PlayerHandler{Conn: connection}
 
-	createTable(connection)
-
 	return plyrHandler
 }
 
-func createTable(db *sql.DB) {
-
-	players_table := `CREATE TABLE IF NOT EXISTS players (
-		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-		"Name" TEXT,
-		"MMR" INT,
-		"Wins" INT,
-		"Losses" INT,
-		"MatchUID" TEXT);`
-
-	query, err := db.Prepare(players_table)
-	if err != nil {
-		log.Fatal(err)
-	}
-	query.Exec()
-}
-
 func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
-	handler.Conn.Exec(`UPDATE players SET MMR = ?, Wins = ?, Losses = ?, MatchUID = ? WHERE Name = ?`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.Id)
+	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4 WHERE "Name" = $5;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.Id)
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {
-	handler.Conn.Exec(`UPDATE players SET MatchUID = ? WHERE Name = ?`, player.MatchId, player.Id)
-
+	handler.Conn.Exec(`UPDATE rocketleague SET "MatchUID" = $1 WHERE "Name" = $2;`, player.MatchId, player.Id)
 }

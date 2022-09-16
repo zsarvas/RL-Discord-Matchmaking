@@ -17,7 +17,7 @@ import (
 )
 
 var Token string
-var sqlPath string
+var tokenApi string
 var playerRepository *interfaces.PlayerRepo
 var matchRepository *interfaces.MatchRepo
 
@@ -38,10 +38,10 @@ func init() {
 		log.Fatal(err)
 	}
 
-	sqlPath = os.Getenv("SQL_PATH")
+	tokenApi = os.Getenv("SUPABASE_CONNECTION_STRING")
 
 	// Data Initialization
-	playerRepoHandler := infrastructure.NewPlayerHandler(sqlPath)
+	playerRepoHandler := infrastructure.NewPlayerHandler(tokenApi)
 	matchRepoHandler := infrastructure.NewMatchHandler()
 	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
 	matchRepository = interfaces.NewMatchDataRepo(matchRepoHandler)
@@ -68,7 +68,19 @@ func main() {
 		return
 	}
 
-	clientConnection.UpdateListeningStatus("your commands.")
+	//clientConnection.UpdateGameStatus(0, "Rocket League 2")
+	err = clientConnection.UpdateStatusComplex(discordgo.UpdateStatusData{
+		Activities: []*discordgo.Activity{
+			&discordgo.Activity{
+				Name: "Rocket League 2",
+				Type: 5,
+			},
+		},
+		Status: "dnd",
+	})
+	if err != nil {
+		fmt.Println("error updating status,", err)
+	}
 	fmt.Println("Bot is open and listening...")
 
 	// Wait for kill signal to terminate
