@@ -329,7 +329,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	q := "**!q**"
 	qDesc := "Join the queue.\n"
 	leaderboard := "**!leaderboard**"
-	leaderboardDesc := "Displays a link to view this server's leaderboard."
+	leaderboardDesc := "Displays a link to view this server's leaderboard.\n"
 
 	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc, leaderboard, leaderboardDesc)
 
