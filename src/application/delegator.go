@@ -71,6 +71,8 @@ func (d *Delegator) HandleIncomingCommand() {
 		d.handleClearQueue()
 	case DISPLAY_HELP:
 		d.handleDisplayHelp()
+	case DISPLAY_LEADERBOARD:
+		d.handleDisplayLeaderboard()
 	case MATT:
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 	case DISPLAY_MATCHES:
@@ -159,7 +161,7 @@ func (d Delegator) handleDisplayQueue() {
 	callingPlayer := d.PlayerRepository.Get(incomingId)
 
 	if presentationqueue == "" {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue is empty")
+		d.Session.ChannelMessageSend("1011004892418166877", "Queue is empty")
 		return
 	}
 
@@ -180,7 +182,7 @@ func (d *Delegator) handleMatchOver() {
 	winningMatch := winningPlayer.MatchId
 
 	if winningPlayer.MatchId == uuid.Nil {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You are not currently in a match.")
+		d.Session.ChannelMessageSend("1011004892418166877", "You are not currently in a match.")
 		return
 	}
 
@@ -204,7 +206,7 @@ func (d *Delegator) handleMatchOver() {
 	}
 
 	if !matchFound {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Matches to report.")
+		d.Session.ChannelMessageSend("1011004892418166877", "No Matches to report.")
 		return
 	}
 	d.displayWinMessage()
@@ -247,7 +249,7 @@ func (d *Delegator) handleLobbyReady() {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+		d.Session.ChannelMessageSend("1011004892418166877", "No Active Matches")
 		return
 	}
 
@@ -305,7 +307,7 @@ func (d *Delegator) handleLobbyReady() {
 			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
 		},
 	}
-	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
 }
 
 func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
@@ -326,8 +328,10 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	statusDesc := "List the players in the queue.\n"
 	q := "**!q**"
 	qDesc := "Join the queue.\n"
+	leaderboard := "**!leaderboard**"
+	leaderboardDesc := "Displays a link to view this server's leaderboard."
 
-	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc)
+	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc, leaderboard, leaderboardDesc)
 
 	var message string
 	var title string
@@ -384,7 +388,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
 		},
 	}
-	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
 }
 
 func (d *Delegator) displayWinMessage() {
@@ -411,14 +415,14 @@ func (d *Delegator) displayWinMessage() {
 			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
 		},
 	}
-	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
 }
 
 func (d *Delegator) handleDisplayMatches() {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+		d.Session.ChannelMessageSend("1011004892418166877", "No Active Matches")
 		return
 	}
 
@@ -489,7 +493,7 @@ func (d *Delegator) handleDisplayMatches() {
 			},
 		}
 
-		d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+		d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
 	}
 
 }
@@ -504,9 +508,9 @@ func (d *Delegator) handleClearQueue() {
 			d.queue.Dequeue()
 			queueLength = d.queue.GetQueueLength()
 		}
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue has been cleared.")
+		d.Session.ChannelMessageSend("1011004892418166877", "Queue has been cleared.")
 	} else {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You do not have permission to execute this command.")
+		d.Session.ChannelMessageSend("1011004892418166877", "You do not have permission to execute this command.")
 	}
 
 }
@@ -519,4 +523,8 @@ func (d *Delegator) handleDisplayHelp() {
 
 	d.changeQueueMessage(DISPLAY_HELP_MENU, prospectivePlayer)
 
+}
+
+func (d *Delegator) handleDisplayLeaderboard() {
+	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Leaderboard for this server can be found at https://versusbot.netlify.app")
 }

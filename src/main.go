@@ -72,11 +72,11 @@ func main() {
 	err = clientConnection.UpdateStatusComplex(discordgo.UpdateStatusData{
 		Activities: []*discordgo.Activity{
 			&discordgo.Activity{
-				Name: "Rocket League 2",
-				Type: 5,
+				Name: "your commands.",
+				Type: 2,
 			},
 		},
-		Status: "dnd",
+		Status: "online",
 	})
 	if err != nil {
 		fmt.Println("error updating status,", err)
