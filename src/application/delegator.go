@@ -177,6 +177,9 @@ func (d *Delegator) handleQueuePop() bool {
 
 func (d *Delegator) handleMatchOver() {
 
+	winnerName := d.DiscordUser.Author.Username
+	winnerImage := d.DiscordUser.Author.AvatarURL("240")
+
 	winnerId := d.DiscordUser.Author.String()
 	winningPlayer := d.PlayerRepository.Get(winnerId)
 	winningMatch := winningPlayer.MatchId
@@ -209,7 +212,7 @@ func (d *Delegator) handleMatchOver() {
 		d.Session.ChannelMessageSend("1011004892418166877", "No Matches to report.")
 		return
 	}
-	d.displayWinMessage()
+	d.displayWinMessage(winnerName, winnerImage)
 	delete(activeMatches, winningMatch)
 }
 
@@ -391,11 +394,11 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
 }
 
-func (d *Delegator) displayWinMessage() {
+func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 
-	title := d.DiscordUser.Author.Username + "'s team wins!"
+	title := playerName + "'s team wins!"
 	message := "Leaderboard has been updated."
-	image := d.DiscordUser.Author.AvatarURL("240")
+	image := playerImage
 
 	embed := &discordgo.MessageEmbed{
 		Author:      &discordgo.MessageEmbedAuthor{},

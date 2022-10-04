@@ -61,9 +61,6 @@ func NewPlayerHandler(connStr string) *PlayerHandler {
 
 	connection, err := sql.Open("postgres", connStr)
 
-	//this works
-	//post, _, err := client.From("rocketleague").Insert(map[string]string{"Name": "Zach"}, true, "", "", "").ExecuteString()
-
 	if err != nil {
 		fmt.Println(err)
 	}
