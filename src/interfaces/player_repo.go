@@ -9,7 +9,7 @@ type PlayerDataHandler interface {
 	GetById(id string, uniqueId string) domain.Player
 	UpdatePlayer(player domain.Player)
 	SetMatchId(player domain.Player)
-	GetLeader() string
+	GetLead() string
 }
 
 type PlayerDataRepo struct {
