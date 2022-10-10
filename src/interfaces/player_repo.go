@@ -6,9 +6,10 @@ import (
 
 type PlayerDataHandler interface {
 	Add(newPlayer domain.Player)
-	GetById(id string) domain.Player
+	GetById(id string, uniqueId string) domain.Player
 	UpdatePlayer(player domain.Player)
 	SetMatchId(player domain.Player)
+	GetLeader() string
 }
 
 type PlayerDataRepo struct {
@@ -28,8 +29,8 @@ func (repo *PlayerRepo) Store(player domain.Player) {
 	repo.dbHandler.Add(player)
 }
 
-func (repo *PlayerRepo) Get(playerId string) domain.Player {
-	foundPlayer := repo.dbHandler.GetById(playerId)
+func (repo *PlayerRepo) Get(playerId string, uniqueId string) domain.Player {
+	foundPlayer := repo.dbHandler.GetById(playerId, uniqueId)
 
 	return foundPlayer
 }
@@ -40,4 +41,8 @@ func (repo *PlayerRepo) Update(player domain.Player) {
 
 func (repo *PlayerRepo) SetMatch(player domain.Player) {
 	repo.dbHandler.SetMatchId(player)
+}
+
+func (repo *PlayerRepo) GetLeader() string {
+	return repo.dbHandler.GetLead()
 }

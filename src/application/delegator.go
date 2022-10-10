@@ -85,9 +85,10 @@ func (d *Delegator) HandleIncomingCommand() {
 // Will check the DB or memory-implementation for a player
 // If no player exists, makes a new one and returns it
 func (d Delegator) fetchPlayer() domain.Player {
+	incomingDiscordId := d.DiscordUser.Author.ID
 	incomingId := d.DiscordUser.Author.String()
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId)
+	prospectivePlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	return prospectivePlayer
@@ -137,9 +138,10 @@ func (d *Delegator) handleEnterQueue() {
 }
 
 func (d *Delegator) handleLeaveQueue() {
+	incomingDiscordId := d.DiscordUser.Author.ID
 	incomingId := d.DiscordUser.Author.String()
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId)
+	prospectivePlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	if !d.queue.PlayerInQueue(prospectivePlayer) {
@@ -156,9 +158,10 @@ func (d *Delegator) handleLeaveQueue() {
 }
 
 func (d Delegator) handleDisplayQueue() {
+	incomingDiscordId := d.DiscordUser.Author.ID
 	presentationqueue := d.queue.DisplayQueue()
 	incomingId := d.DiscordUser.Author.String()
-	callingPlayer := d.PlayerRepository.Get(incomingId)
+	callingPlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
 
 	if presentationqueue == "" {
 		d.Session.ChannelMessageSend("1011004892418166877", "Queue is empty")
@@ -179,10 +182,13 @@ func (d *Delegator) handleMatchOver() {
 
 	winnerName := d.DiscordUser.Author.Username
 	winnerImage := d.DiscordUser.Author.AvatarURL("240")
+	winnerDiscordId := d.DiscordUser.Author.ID
 
 	winnerId := d.DiscordUser.Author.String()
-	winningPlayer := d.PlayerRepository.Get(winnerId)
+	winningPlayer := d.PlayerRepository.Get(winnerId, winnerDiscordId)
 	winningMatch := winningPlayer.MatchId
+
+	oldLeader := d.PlayerRepository.GetLeader()
 
 	if winningPlayer.MatchId == uuid.Nil {
 		d.Session.ChannelMessageSend("1011004892418166877", "You are not currently in a match.")
@@ -214,6 +220,8 @@ func (d *Delegator) handleMatchOver() {
 	}
 	d.displayWinMessage(winnerName, winnerImage)
 	delete(activeMatches, winningMatch)
+	leader := d.PlayerRepository.GetLeader()
+	d.handleLeaderRole(leader, oldLeader)
 }
 
 func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
@@ -350,6 +358,10 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	}
 
 	title = strconv.Itoa(queueLength) + " players are in the queue."
+
+	if queueLength == 1 {
+		title = strconv.Itoa(queueLength) + " player is in the queue."
+	}
 
 	switch messageConst {
 	case PLAYER_ADD:
@@ -519,9 +531,10 @@ func (d *Delegator) handleClearQueue() {
 }
 
 func (d *Delegator) handleDisplayHelp() {
+	incomingDiscordId := d.DiscordUser.Author.ID
 	incomingId := d.DiscordUser.Author.String()
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId)
+	prospectivePlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	d.changeQueueMessage(DISPLAY_HELP_MENU, prospectivePlayer)
@@ -530,4 +543,12 @@ func (d *Delegator) handleDisplayHelp() {
 
 func (d *Delegator) handleDisplayLeaderboard() {
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Leaderboard for this server can be found at https://versusbot.netlify.app")
+}
+
+func (d *Delegator) handleLeaderRole(leader string, oldLeader string) {
+
+	d.Session.GuildMemberRoleAdd("189628012604555265", leader, "1028789594277302302")
+	if leader != oldLeader {
+		d.Session.GuildMemberRoleRemove("189628012604555265", oldLeader, "1028789594277302302")
+	}
 }

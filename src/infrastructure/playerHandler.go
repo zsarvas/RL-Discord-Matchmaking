@@ -19,10 +19,10 @@ type PlayerHandler struct {
 }
 
 func (handler *PlayerHandler) Add(newPlayer domain.Player) {
-	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID") VALUES ('%v', '%f', '%d', '%d', '%s');`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId))
+	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordID") VALUES ('%v', '%f', '%d', '%d', '%s', '%s');`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId, newPlayer.DiscordId))
 }
 
-func (handler *PlayerHandler) GetById(id string) domain.Player {
+func (handler *PlayerHandler) GetById(id string, uniqueId string) domain.Player {
 	record, err := handler.Conn.Query(`SELECT * FROM rocketleague WHERE "Name" = $1;`, id)
 
 	if err != nil {
@@ -35,13 +35,14 @@ func (handler *PlayerHandler) GetById(id string) domain.Player {
 	var numWins int
 	var numLosses int
 	var matchId uuid.UUID
+	var discordId string
 
 	for record.Next() {
-		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId)
+		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId, &discordId)
 	}
 
 	if id != name {
-		newPlayer := domain.NewPlayer(id)
+		newPlayer := domain.NewPlayer(id, uniqueId)
 		handler.Add(*newPlayer)
 		return *newPlayer
 	} else {
@@ -52,6 +53,7 @@ func (handler *PlayerHandler) GetById(id string) domain.Player {
 		foundPlayer.NumLosses = numLosses
 		foundPlayer.Mmr = mmr
 		foundPlayer.MatchId = matchId
+		foundPlayer.DiscordId = uniqueId
 
 		return *foundPlayer
 	}
@@ -71,9 +73,30 @@ func NewPlayerHandler(connStr string) *PlayerHandler {
 }
 
 func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
-	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4 WHERE "Name" = $5;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.Id)
+	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4, "DiscordId" = $5 WHERE "Name" = $6;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.DiscordId, player.Id)
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {
 	handler.Conn.Exec(`UPDATE rocketleague SET "MatchUID" = $1 WHERE "Name" = $2;`, player.MatchId, player.Id)
+}
+
+func (handler *PlayerHandler) GetLead() string {
+	record, err := handler.Conn.Query(`SELECT MAX(MMR) FROM rocketleague`)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	var index int
+	var name string
+	var mmr float64
+	var numWins int
+	var numLosses int
+	var matchId uuid.UUID
+	var discordId string
+
+	for record.Next() {
+		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId, &discordId)
+	}
+
+	return discordId
 }
