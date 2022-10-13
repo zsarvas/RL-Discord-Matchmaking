@@ -16,18 +16,18 @@ type Player struct {
 	Mmr         float64
 	IsInGame    bool
 	IsAdmin     bool
-	DiscordId   string
+	DiscordId   int
 }
 
 type PlayerRepository interface {
 	Store(player Player)
-	Get(id string, uniqueId string) Player
+	Get(id string, uniqueId int) Player
 	Update(player Player)
 	SetMatch(player Player)
-	GetLeader() string
+	GetLeader() int
 }
 
-func NewPlayer(id string, uniqueId string) *Player {
+func NewPlayer(id string, uniqueId int) *Player {
 	p := Player{
 		Id:          id,
 		MentionName: "",

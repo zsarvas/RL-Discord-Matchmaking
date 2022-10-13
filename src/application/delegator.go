@@ -1,6 +1,7 @@
 package application
 
 import (
+	"log"
 	"math"
 	"strconv"
 	"time"
@@ -86,9 +87,13 @@ func (d *Delegator) HandleIncomingCommand() {
 // If no player exists, makes a new one and returns it
 func (d Delegator) fetchPlayer() domain.Player {
 	incomingDiscordId := d.DiscordUser.Author.ID
+	strIncomingDiscordId, err := strconv.Atoi(incomingDiscordId)
+	if err != nil {
+		log.Fatal(err)
+	}
 	incomingId := d.DiscordUser.Author.String()
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
+	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	return prospectivePlayer
@@ -139,9 +144,13 @@ func (d *Delegator) handleEnterQueue() {
 
 func (d *Delegator) handleLeaveQueue() {
 	incomingDiscordId := d.DiscordUser.Author.ID
+	strIncomingDiscordId, err := strconv.Atoi(incomingDiscordId)
+	if err != nil {
+		log.Fatal(err)
+	}
 	incomingId := d.DiscordUser.Author.String()
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
+	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	if !d.queue.PlayerInQueue(prospectivePlayer) {
@@ -160,8 +169,12 @@ func (d *Delegator) handleLeaveQueue() {
 func (d Delegator) handleDisplayQueue() {
 	incomingDiscordId := d.DiscordUser.Author.ID
 	presentationqueue := d.queue.DisplayQueue()
+	strIncomingDiscordId, err := strconv.Atoi(incomingDiscordId)
+	if err != nil {
+		log.Fatal(err)
+	}
 	incomingId := d.DiscordUser.Author.String()
-	callingPlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
+	callingPlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 
 	if presentationqueue == "" {
 		d.Session.ChannelMessageSend("1011004892418166877", "Queue is empty")
@@ -183,9 +196,13 @@ func (d *Delegator) handleMatchOver() {
 	winnerName := d.DiscordUser.Author.Username
 	winnerImage := d.DiscordUser.Author.AvatarURL("240")
 	winnerDiscordId := d.DiscordUser.Author.ID
+	strWinnerDiscordId, err := strconv.Atoi(winnerDiscordId)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	winnerId := d.DiscordUser.Author.String()
-	winningPlayer := d.PlayerRepository.Get(winnerId, winnerDiscordId)
+	winningPlayer := d.PlayerRepository.Get(winnerId, strWinnerDiscordId)
 	winningMatch := winningPlayer.MatchId
 
 	oldLeader := d.PlayerRepository.GetLeader()
@@ -221,7 +238,9 @@ func (d *Delegator) handleMatchOver() {
 	d.displayWinMessage(winnerName, winnerImage)
 	delete(activeMatches, winningMatch)
 	leader := d.PlayerRepository.GetLeader()
-	d.handleLeaderRole(leader, oldLeader)
+	strLeader := strconv.Itoa(leader)
+	strOldLeader := strconv.Itoa(oldLeader)
+	d.handleLeaderRole(strLeader, strOldLeader)
 }
 
 func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
@@ -533,8 +552,12 @@ func (d *Delegator) handleClearQueue() {
 func (d *Delegator) handleDisplayHelp() {
 	incomingDiscordId := d.DiscordUser.Author.ID
 	incomingId := d.DiscordUser.Author.String()
+	strIncomingDiscordId, err := strconv.Atoi(incomingDiscordId)
+	if err != nil {
+		log.Fatal(err)
+	}
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId, incomingDiscordId)
+	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	d.changeQueueMessage(DISPLAY_HELP_MENU, prospectivePlayer)
