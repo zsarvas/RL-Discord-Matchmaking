@@ -81,7 +81,7 @@ func (handler *PlayerHandler) SetMatchId(player domain.Player) {
 }
 
 func (handler *PlayerHandler) GetLead() int {
-	record, err := handler.Conn.Query(`SELECT MAX("MMR") FROM rocketleague`)
+	record, err := handler.Conn.Query(`SELECT DISTINCT ON ("MMR") "id", "Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordID" FROM rocketleague ORDER BY "MMR" DESC`)
 
 	if err != nil {
 		log.Fatal(err)
@@ -96,7 +96,8 @@ func (handler *PlayerHandler) GetLead() int {
 
 	for record.Next() {
 		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId, &discordId)
+		return discordId
 	}
 
-	return discordId
+	return 0
 }
