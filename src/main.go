@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -83,9 +82,9 @@ func main() {
 		fmt.Println("error updating status,", err)
 	}
 	fmt.Println("Bot is open and listening...")
-	counter := 1
+	//counter := 1
 
-	if counter == 1 {
+	/*if counter == 1 {
 
 		embed := &discordgo.MessageEmbed{
 			Author:      &discordgo.MessageEmbedAuthor{},
@@ -107,7 +106,7 @@ func main() {
 
 		d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
 		counter++
-	}
+	}*/
 	// Wait for kill signal to terminate
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGTERM)
