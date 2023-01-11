@@ -82,31 +82,7 @@ func main() {
 		fmt.Println("error updating status,", err)
 	}
 	fmt.Println("Bot is open and listening...")
-	//counter := 1
 
-	/*if counter == 1 {
-
-		embed := &discordgo.MessageEmbed{
-			Author:      &discordgo.MessageEmbedAuthor{},
-			Color:       0x00ff00, // Green,
-			Description: "this is a stupid test message",
-			Image: &discordgo.MessageEmbedImage{
-				URL: "",
-			},
-			Thumbnail: &discordgo.MessageEmbedThumbnail{
-				URL: "",
-			},
-			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-			Title:     "This is a stupid test title",
-			Footer: &discordgo.MessageEmbedFooter{
-				Text:    "Created by Zach Sarvas and Ritter Gustave",
-				IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
-			},
-		}
-
-		d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
-		counter++
-	}*/
 	// Wait for kill signal to terminate
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGTERM)

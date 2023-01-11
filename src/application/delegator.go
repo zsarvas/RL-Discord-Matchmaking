@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -23,14 +24,17 @@ type Delegator struct {
 }
 
 const (
-	PLAYER_ADD              int = 0
-	PLAYER_LEFT             int = 1
-	PLAYER_SHOW             int = 3
-	PLAYER_ALREADY_IN_QUEUE int = 4
-	PLAYER_ALREADY_IN_MATCH int = 5
-	PLAYER_NOT_IN_QUEUE     int = 6
-	DISPLAY_QUEUE           int = 7
-	DISPLAY_HELP_MENU       int = 8
+	PLAYER_ADD              int    = 0
+	PLAYER_LEFT             int    = 1
+	PLAYER_SHOW             int    = 3
+	PLAYER_ALREADY_IN_QUEUE int    = 4
+	PLAYER_ALREADY_IN_MATCH int    = 5
+	PLAYER_NOT_IN_QUEUE     int    = 6
+	DISPLAY_QUEUE           int    = 7
+	DISPLAY_HELP_MENU       int    = 8
+	LOGO_URL1               string = ""
+	LOGO_URL2               string = ""
+	ICON_URL                string = ""
 )
 
 func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
@@ -53,6 +57,38 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 
 	if strings.Contains(d.command, REPORT_WIN) {
 		d.command = REPORT_WIN
+	}
+	counter := 1
+	if counter == 1 {
+
+		embed := &discordgo.MessageEmbed{
+			Type:        discordgo.EmbedTypeRich,
+			Author:      &discordgo.MessageEmbedAuthor{},
+			Color:       0x00ff00, // Green,
+			Description: "this is a stupid test message",
+			Image: &discordgo.MessageEmbedImage{
+				URL: "https://img.freepik.com/premium-vector/vs-versus-letter-logo-vs-letters-transparent-background-vector-illustration-competition-confrontation_185004-455.jpg?w=1380",
+			},
+			Thumbnail: &discordgo.MessageEmbedThumbnail{
+				URL: "",
+			},
+			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+			Title:     "This is a stupid test title",
+			Footer: &discordgo.MessageEmbedFooter{
+				Text:    "Created by Zach Sarvas and Ritter Gustave",
+				IconURL: ""},
+		}
+
+		message, err := d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
+
+		fmt.Println(message)
+
+		if err != nil {
+			fmt.Println("error sending embed,", err)
+		}
+
+		counter = 2
+
 	}
 
 	d.HandleIncomingCommand()
@@ -139,6 +175,7 @@ func (d *Delegator) handleEnterQueue() {
 		d.handleLobbyReady()
 		return
 	}
+
 	d.changeQueueMessage(PLAYER_ADD, prospectivePlayer)
 }
 
@@ -325,16 +362,16 @@ func (d *Delegator) handleLobbyReady() {
 			},
 		},
 		Image: &discordgo.MessageEmbedImage{
-			URL: "",
+			URL: LOGO_URL1,
 		},
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
-			URL: "",
+			URL: LOGO_URL2,
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
 		Footer: &discordgo.MessageEmbedFooter{
 			Text:    "Created by Zach Sarvas and Ritter Gustave",
-			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+			IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
@@ -410,16 +447,16 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		Color:       color,
 		Description: message,
 		Image: &discordgo.MessageEmbedImage{
-			URL: "",
+			URL: LOGO_URL1,
 		},
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
-			URL: "",
+			URL: LOGO_URL2,
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
 			Text:    "Created by Zach Sarvas and Ritter Gustave",
-			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+			IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
@@ -437,7 +474,7 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 		Description: message,
 		Fields:      []*discordgo.MessageEmbedField{},
 		Image: &discordgo.MessageEmbedImage{
-			URL: "",
+			URL: LOGO_URL1,
 		},
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
 			URL: image,
@@ -446,7 +483,7 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
 			Text:    "Created by Zach Sarvas and Ritter Gustave",
-			IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+			IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
@@ -514,16 +551,16 @@ func (d *Delegator) handleDisplayMatches() {
 				},
 			},
 			Image: &discordgo.MessageEmbedImage{
-				URL: "",
+				URL: LOGO_URL1,
 			},
 			Thumbnail: &discordgo.MessageEmbedThumbnail{
-				URL: "",
+				URL: LOGO_URL2,
 			},
 			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 			Title:     title,
 			Footer: &discordgo.MessageEmbedFooter{
 				Text:    "Created by Zach Sarvas and Ritter Gustave",
-				IconURL: "https://media-exp1.licdn.com/dms/image/C560BAQF24YrdYxKgpw/company-logo_200_200/0/1535555980728?e=1669852800&v=beta&t=D18WBZeNWIGnBMbEGWzg94kpIoOmKgCMf8SrboMk9iw",
+				IconURL: ICON_URL,
 			},
 		}
 
