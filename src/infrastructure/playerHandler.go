@@ -23,7 +23,7 @@ func (handler *PlayerHandler) Add(newPlayer domain.Player) {
 }
 
 func (handler *PlayerHandler) GetById(id string, uniqueId int) domain.Player {
-	record, err := handler.Conn.Query(`SELECT * FROM rocketleague2 WHERE "Name" = $1;`, id)
+	record, err := handler.Conn.Query(`SELECT * FROM rocketleague2 WHERE "DiscordID" = $1;`, uniqueId)
 
 	if err != nil {
 		log.Fatal(err)
@@ -41,7 +41,7 @@ func (handler *PlayerHandler) GetById(id string, uniqueId int) domain.Player {
 		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId, &discordId)
 	}
 
-	if id != name {
+	if uniqueId != discordId {
 		newPlayer := domain.NewPlayer(id, uniqueId)
 		handler.Add(*newPlayer)
 		return *newPlayer
@@ -77,7 +77,7 @@ func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {
-	handler.Conn.Exec(`UPDATE rocketleague2 SET "MatchUID" = $1 WHERE "Name" = $2;`, player.MatchId, player.Id)
+	handler.Conn.Exec(`UPDATE rocketleague2 SET "MatchUID" = $1 WHERE "DiscordId" = $2;`, player.MatchId, player.DiscordId)
 }
 
 func (handler *PlayerHandler) GetLead() int {
