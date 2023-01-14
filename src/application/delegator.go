@@ -289,6 +289,7 @@ func (d *Delegator) handleLobbyReady() {
 
 	var team1 string
 	var team2 string
+	messageKing := "@4Mans King a queue has popped!  Join the next queue to defend your title."
 
 	for _, v := range activeMatches {
 		stringifiedTeamOne := []string{}
@@ -342,6 +343,7 @@ func (d *Delegator) handleLobbyReady() {
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
+	d.Session.ChannelMessageSend("1011004892418166877", messageKing)
 }
 
 func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
