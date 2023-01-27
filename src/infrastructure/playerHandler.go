@@ -73,7 +73,7 @@ func NewPlayerHandler(connStr string) *PlayerHandler {
 }
 
 func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
-	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4, "DiscordId" = $5 WHERE "Name" = $6;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.DiscordId, player.Id)
+	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4, "Name" = $5 WHERE "DiscordId" = $6;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.Id, player.DiscordId)
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {
