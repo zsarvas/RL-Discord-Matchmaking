@@ -58,6 +58,10 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 		d.command = REPORT_WIN
 	}
 
+	if strings.Contains(d.command, DISPLAY_LEADERBOARD) {
+		d.command = DISPLAY_LEADERBOARD
+	}
+
 	d.HandleIncomingCommand()
 }
 
@@ -337,7 +341,7 @@ func (d *Delegator) handleLobbyReady() {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Created by Zach Sarvas and Ritter Gustave",
+			Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
 			//IconURL: ICON_URL,
 		},
 	}
@@ -423,7 +427,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Created by Zach Sarvas and Ritter Gustave",
+			Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
 			//IconURL: ICON_URL,
 		},
 	}
@@ -450,7 +454,7 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Created by Zach Sarvas and Ritter Gustave",
+			Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
 			//IconURL: ICON_URL,
 		},
 	}
@@ -527,7 +531,7 @@ func (d *Delegator) handleDisplayMatches() {
 			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 			Title:     title,
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Created by Zach Sarvas and Ritter Gustave",
+				Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
 				//IconURL: ICON_URL,
 			},
 		}
