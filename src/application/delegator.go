@@ -331,6 +331,11 @@ func (d *Delegator) handleLobbyReady() {
 				Value:  team2,
 				Inline: true,
 			},
+			&discordgo.MessageEmbedField{
+				Name:   "Check out the leaderboard here:",
+				Value:  "https://versusbot.netlify.app",
+				Inline: false,
+			},
 		},
 		//Image: &discordgo.MessageEmbedImage{
 		//	URL: LOGO_URL1,
@@ -341,8 +346,8 @@ func (d *Delegator) handleLobbyReady() {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
-			//IconURL: ICON_URL,
+			Text: "Powered by 2CDs",
+			// IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
@@ -418,6 +423,13 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		Author:      &discordgo.MessageEmbedAuthor{},
 		Color:       color,
 		Description: message,
+		Fields: []*discordgo.MessageEmbedField{
+			&discordgo.MessageEmbedField{
+				Name:   "Check out the leaderboard here:",
+				Value:  "https://versusbot.netlify.app",
+				Inline: false,
+			},
+		},
 		//Image: &discordgo.MessageEmbedImage{
 		//	URL: LOGO_URL1,
 		//},
@@ -427,8 +439,8 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
-			//IconURL: ICON_URL,
+			Text: "Powered by 2CDs",
+			// IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
@@ -444,18 +456,21 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 		Author:      &discordgo.MessageEmbedAuthor{},
 		Color:       0x00ff00, // Green
 		Description: message,
-		Fields:      []*discordgo.MessageEmbedField{},
-		//Image: &discordgo.MessageEmbedImage{
-		//URL: LOGO_URL1,
-		//},
+		Fields: []*discordgo.MessageEmbedField{
+			&discordgo.MessageEmbedField{
+				Name:   "Check out the leaderboard here:",
+				Value:  "https://versusbot.netlify.app",
+				Inline: false,
+			},
+		},
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
 			URL: image,
 		},
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
-			//IconURL: ICON_URL,
+			Text: "Powered by 2CDs",
+			// IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
@@ -521,6 +536,11 @@ func (d *Delegator) handleDisplayMatches() {
 					Value:  team2,
 					Inline: true,
 				},
+				&discordgo.MessageEmbedField{
+					Name:   "Check out the leaderboard here:",
+					Value:  "https://versusbot.netlify.app",
+					Inline: false,
+				},
 			},
 			//Image: &discordgo.MessageEmbedImage{
 			//URL: LOGO_URL1,
@@ -531,8 +551,8 @@ func (d *Delegator) handleDisplayMatches() {
 			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 			Title:     title,
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Leaderboard can be found here: https://versusbot.netlify.app/ ",
-				//IconURL: ICON_URL,
+				Text: "Powered by 2CDs",
+				// IconURL: ICON_URL,
 			},
 		}
 
