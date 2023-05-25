@@ -34,6 +34,7 @@ const (
 	LOGO_URL1               string = ""
 	LOGO_URL2               string = ""
 	ICON_URL                string = ""
+	FOURMANSCHANNELID       string = "1011004892418166877"
 )
 
 func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
@@ -185,7 +186,7 @@ func (d Delegator) handleDisplayQueue() {
 	callingPlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 
 	if presentationqueue == "" {
-		d.Session.ChannelMessageSend("1011004892418166877", "Queue is empty")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "Queue is empty")
 		return
 	}
 
@@ -216,7 +217,7 @@ func (d *Delegator) handleMatchOver() {
 	oldLeader := d.PlayerRepository.GetLeader()
 
 	if winningPlayer.MatchId == uuid.Nil {
-		d.Session.ChannelMessageSend("1011004892418166877", "You are not currently in a match.")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "You are not currently in a match.")
 		return
 	}
 
@@ -240,7 +241,7 @@ func (d *Delegator) handleMatchOver() {
 	}
 
 	if !matchFound {
-		d.Session.ChannelMessageSend("1011004892418166877", "No Matches to report.")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Matches to report.")
 		return
 	}
 	d.displayWinMessage(winnerName, winnerImage)
@@ -287,7 +288,7 @@ func (d *Delegator) handleLobbyReady() {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
-		d.Session.ChannelMessageSend("1011004892418166877", "No Active Matches")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Active Matches")
 		return
 	}
 
@@ -350,8 +351,8 @@ func (d *Delegator) handleLobbyReady() {
 			// IconURL: ICON_URL,
 		},
 	}
-	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
-	d.Session.ChannelMessageSend("1011004892418166877", "<@&1028789594277302302> a queue has popped!  Join the next queue to defend your title.")
+	d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
+	d.Session.ChannelMessageSend(FOURMANSCHANNELID, "<@&1028789594277302302> a queue has popped!  Join the next queue to defend your title.")
 }
 
 func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
@@ -443,7 +444,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 			// IconURL: ICON_URL,
 		},
 	}
-	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
+	d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
 }
 
 func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
@@ -473,14 +474,14 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 			// IconURL: ICON_URL,
 		},
 	}
-	d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
+	d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
 }
 
 func (d *Delegator) handleDisplayMatches() {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
-		d.Session.ChannelMessageSend("1011004892418166877", "No Active Matches")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Active Matches")
 		return
 	}
 
@@ -556,7 +557,7 @@ func (d *Delegator) handleDisplayMatches() {
 			},
 		}
 
-		d.Session.ChannelMessageSendEmbed("1011004892418166877", embed)
+		d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
 	}
 
 }
@@ -571,9 +572,9 @@ func (d *Delegator) handleClearQueue() {
 			d.queue.Dequeue()
 			queueLength = d.queue.GetQueueLength()
 		}
-		d.Session.ChannelMessageSend("1011004892418166877", "Queue has been cleared.")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "Queue has been cleared.")
 	} else {
-		d.Session.ChannelMessageSend("1011004892418166877", "You do not have permission to execute this command.")
+		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "You do not have permission to execute this command.")
 	}
 
 }
