@@ -567,7 +567,7 @@ func (d *Delegator) handleClearQueue() {
 	author := d.DiscordUser.Author.String()
 	queueLength := d.queue.GetQueueLength()
 
-	if author == "Zak#9050" {
+	if author == "chocolatekoolaid" {
 		for queueLength > 0 {
 			d.queue.Dequeue()
 			queueLength = d.queue.GetQueueLength()
