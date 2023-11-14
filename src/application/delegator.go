@@ -564,10 +564,10 @@ func (d *Delegator) handleDisplayMatches() {
 
 func (d *Delegator) handleClearQueue() {
 
-	author := d.DiscordUser.Author.String()
+	authorID := d.DiscordUser.ID
 	queueLength := d.queue.GetQueueLength()
 
-	if author == "chocolatekoolaid" {
+	if authorID == "189579878448889856" {
 		for queueLength > 0 {
 			d.queue.Dequeue()
 			queueLength = d.queue.GetQueueLength()
