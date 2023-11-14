@@ -63,10 +63,6 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 		d.command = DISPLAY_LEADERBOARD
 	}
 
-	if strings.Contains(d.command, "MATT") {
-		d.command = MATT
-	}
-
 	d.HandleIncomingCommand()
 }
 
