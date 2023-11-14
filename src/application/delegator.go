@@ -100,7 +100,7 @@ func (d Delegator) fetchPlayer() domain.Player {
 		log.Fatal(err)
 	}
 	incomingId := d.DiscordUser.Author.String()
-	mention := d.DiscordUser.Author.Username
+	mention := d.DiscordUser.Author.Mention()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
@@ -158,7 +158,7 @@ func (d *Delegator) handleLeaveQueue() {
 		log.Fatal(err)
 	}
 	incomingId := d.DiscordUser.Author.String()
-	mention := d.DiscordUser.Author.Username
+	mention := d.DiscordUser.Author.Mention()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
@@ -202,7 +202,7 @@ func (d *Delegator) handleQueuePop() bool {
 
 func (d *Delegator) handleMatchOver() {
 
-	winnerName := d.DiscordUser.Author.Username
+	winnerName := d.DiscordUser.Author.Mention()
 	winnerImage := d.DiscordUser.Author.AvatarURL("480")
 	winnerDiscordId := d.DiscordUser.Author.ID
 	strWinnerDiscordId, err := strconv.Atoi(winnerDiscordId)
@@ -586,7 +586,7 @@ func (d *Delegator) handleDisplayHelp() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mention := d.DiscordUser.Author.Username
+	mention := d.DiscordUser.Author.Mention()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
