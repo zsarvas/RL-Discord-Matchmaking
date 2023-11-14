@@ -564,7 +564,7 @@ func (d *Delegator) handleDisplayMatches() {
 
 func (d *Delegator) handleClearQueue() {
 
-	authorID := d.DiscordUser.ID
+	authorID := d.DiscordUser.Author.ID
 	queueLength := d.queue.GetQueueLength()
 
 	if authorID == "189579878448889856" {
