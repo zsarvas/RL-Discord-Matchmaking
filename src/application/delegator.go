@@ -153,9 +153,11 @@ func (d *Delegator) handleEnterQueue() {
 	go func() {
 		select {
 		case <-time.After(20 * time.Minute):
-			d.Session.ChannelMessageSend(FOURMANSCHANNELID, prospectivePlayer.MentionName+" has been timed out from the queue.")
-			d.queue.LeaveQueue(prospectivePlayer)
-			d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
+			if d.queue.PlayerInQueue(prospectivePlayer) {
+				d.Session.ChannelMessageSend(FOURMANSCHANNELID, prospectivePlayer.MentionName+" has been timed out from the queue.")
+				d.queue.LeaveQueue(prospectivePlayer)
+				d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
+			}
 		}
 	}()
 
