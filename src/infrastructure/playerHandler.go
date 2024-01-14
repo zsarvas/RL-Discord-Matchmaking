@@ -19,7 +19,7 @@ type PlayerHandler struct {
 }
 
 func (handler *PlayerHandler) Add(newPlayer domain.Player) {
-	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ('%v', '%f', '%d', '%d', '%s', '%d');`, newPlayer.Id, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId, newPlayer.DiscordId))
+	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ('%v', '%f', '%d', '%d', '%s', '%d');`, newPlayer.MentionName, newPlayer.Mmr, newPlayer.NumWins, newPlayer.NumLosses, newPlayer.MatchId, newPlayer.DiscordId))
 }
 
 func (handler *PlayerHandler) GetById(id string, uniqueId int) domain.Player {
@@ -73,7 +73,7 @@ func NewPlayerHandler(connStr string) *PlayerHandler {
 }
 
 func (handler *PlayerHandler) UpdatePlayer(player domain.Player) {
-	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4, "Name" = $5 WHERE "DiscordId" = $6;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.Id, player.DiscordId)
+	handler.Conn.Exec(`UPDATE rocketleague SET "MMR" = $1, "Wins" = $2, "Losses" = $3, "MatchUID" = $4, "Name" = $5 WHERE "DiscordId" = $6;`, player.Mmr, player.NumWins, player.NumLosses, player.MatchId, player.MentionName, player.DiscordId)
 }
 
 func (handler *PlayerHandler) SetMatchId(player domain.Player) {

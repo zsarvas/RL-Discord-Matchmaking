@@ -99,7 +99,7 @@ func (d Delegator) fetchPlayer() domain.Player {
 	if err != nil {
 		log.Fatal(err)
 	}
-	incomingId := d.DiscordUser.Author.Username
+	incomingId := d.DiscordUser.Author.String()
 	mention := d.DiscordUser.Author.Mention()
 	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
