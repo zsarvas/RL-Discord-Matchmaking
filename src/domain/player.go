@@ -1,16 +1,13 @@
 package domain
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 )
 
 type Player struct {
 	Id          string
-	MentionName string
-	DisplayName string
 	MatchId     uuid.UUID
+	MentionName string
 	NumWins     int
 	NumLosses   int
 	Mmr         float64
@@ -31,7 +28,6 @@ func NewPlayer(id string, uniqueId int) *Player {
 	p := Player{
 		Id:          id,
 		MentionName: "",
-		DisplayName: strings.Split(id, "#")[0],
 		MatchId:     uuid.Nil,
 		NumWins:     0,
 		NumLosses:   0,

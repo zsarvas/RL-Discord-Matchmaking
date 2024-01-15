@@ -1,11 +1,16 @@
 package application
 
 import (
+	"errors"
+	"io"
 	"log"
 	"math"
+	"net/http"
+	"os"
 	"strconv"
 	"time"
 
+	"encoding/json"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -20,6 +25,21 @@ type Delegator struct {
 	PlayerRepository domain.PlayerRepository
 	MatchRepository  MatchRepository
 	command          string
+}
+
+type DiscordUser struct {
+	ID                   string  `json:"id"`
+	Username             string  `json:"username"`
+	Avatar               string  `json:"avatar"`
+	Discriminator        string  `json:"discriminator"`
+	PublicFlags          int     `json:"public_flags"`
+	PremiumType          int     `json:"premium_type"`
+	Flags                int     `json:"flags"`
+	Banner               *string `json:"banner"`       // Pointer to handle null value
+	AccentColor          *int    `json:"accent_color"` // Pointer to handle null value
+	GlobalName           string  `json:"global_name"`
+	AvatarDecorationData *string `json:"avatar_decoration_data"` // Pointer to handle null value
+	BannerColor          *string `json:"banner_color"`           // Pointer to handle null value
 }
 
 const (
@@ -99,10 +119,14 @@ func (d Delegator) fetchPlayer() domain.Player {
 	if err != nil {
 		log.Fatal(err)
 	}
-	incomingId := d.DiscordUser.Author.String()
+	globalName, err := d.getGlobalName(d.DiscordUser.Author.ID, d.DiscordUser.Member.Nick)
+	if err != nil {
+		log.Fatal(err)
+	}
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
+	prospectivePlayer := d.PlayerRepository.Get(globalName, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
+	prospectivePlayer.Id = globalName
 
 	return prospectivePlayer
 }
@@ -169,10 +193,14 @@ func (d *Delegator) handleLeaveQueue() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	incomingId := d.DiscordUser.Author.String()
+	globalName, err := d.getGlobalName(d.DiscordUser.Author.ID, d.DiscordUser.Member.Nick)
+	if err != nil {
+		log.Fatal(err)
+	}
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
+	prospectivePlayer := d.PlayerRepository.Get(globalName, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
+	prospectivePlayer.Id = globalName
 
 	if !d.queue.PlayerInQueue(prospectivePlayer) {
 		// Player isn't in queue, exit
@@ -194,8 +222,11 @@ func (d Delegator) handleDisplayQueue() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	incomingId := d.DiscordUser.Author.String()
-	callingPlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
+	globalName, err := d.getGlobalName(d.DiscordUser.Author.ID, d.DiscordUser.Member.Nick)
+	if err != nil {
+		log.Fatal(err)
+	}
+	callingPlayer := d.PlayerRepository.Get(globalName, strIncomingDiscordId)
 
 	if presentationqueue == "" {
 		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "Queue is empty")
@@ -214,7 +245,10 @@ func (d *Delegator) handleQueuePop() bool {
 
 func (d *Delegator) handleMatchOver() {
 
-	winnerName := d.DiscordUser.Author.Mention()
+	winnerId, err := d.getGlobalName(d.DiscordUser.Author.ID, d.DiscordUser.Member.Nick)
+	if err != nil {
+		log.Fatal(err)
+	}
 	winnerImage := d.DiscordUser.Author.AvatarURL("480")
 	winnerDiscordId := d.DiscordUser.Author.ID
 	strWinnerDiscordId, err := strconv.Atoi(winnerDiscordId)
@@ -222,7 +256,6 @@ func (d *Delegator) handleMatchOver() {
 		log.Fatal(err)
 	}
 
-	winnerId := d.DiscordUser.Author.String()
 	winningPlayer := d.PlayerRepository.Get(winnerId, strWinnerDiscordId)
 	winningMatch := winningPlayer.MatchId
 
@@ -256,7 +289,7 @@ func (d *Delegator) handleMatchOver() {
 		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Matches to report.")
 		return
 	}
-	d.displayWinMessage(winnerName, winnerImage)
+	d.displayWinMessage(winnerId, winnerImage)
 	delete(activeMatches, winningMatch)
 	leader := d.PlayerRepository.GetLeader()
 	strLeader := strconv.Itoa(leader)
@@ -615,5 +648,52 @@ func (d *Delegator) handleLeaderRole(leader string, oldLeader string) {
 	d.Session.GuildMemberRoleAdd("189628012604555265", leader, "1028789594277302302")
 	if leader != oldLeader {
 		d.Session.GuildMemberRoleRemove("189628012604555265", oldLeader, "1028789594277302302")
+	}
+}
+
+func (d *Delegator) getGlobalName(discordID string, nickName string) (string, error) {
+	// Discord API endpoint for fetching user information
+	url := "https://discord.com/api/users/" + discordID
+
+	// Create a new request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Set the authorization header to your bot token
+	botToken := os.Getenv("TOKEN")
+
+	if botToken == "" {
+		err := errors.New("no token found")
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bot "+botToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Create a new HTTP client and send the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var user DiscordUser
+	err = json.Unmarshal([]byte(body), &user)
+	if err != nil {
+		panic(err)
+	}
+
+	if nickName == "" {
+		return user.GlobalName, nil
+	} else {
+		return nickName, nil
 	}
 }
