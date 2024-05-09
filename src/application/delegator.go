@@ -57,6 +57,8 @@ const (
 	FOURMANSCHANNELID       string = "1011004892418166877"
 )
 
+var playerTimers = make(map[domain.Player]*time.Timer)
+
 func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
 	// could possible move this queue out of the 'constructor'
 	newQueue := domain.NewQueue(4)
@@ -81,6 +83,10 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 
 	if strings.Contains(d.command, DISPLAY_LEADERBOARD) {
 		d.command = DISPLAY_LEADERBOARD
+	}
+
+	if strings.Contains(d.command, MATT) {
+		d.command = MATT
 	}
 
 	d.HandleIncomingCommand()
@@ -134,6 +140,7 @@ func (d Delegator) fetchPlayer() domain.Player {
 func (d *Delegator) handleEnterQueue() {
 
 	prospectivePlayer := d.fetchPlayer()
+	d.startTimeoutTimer(prospectivePlayer)
 
 	if d.queue.PlayerInQueue(prospectivePlayer) {
 		d.changeQueueMessage(PLAYER_ALREADY_IN_QUEUE, prospectivePlayer)
@@ -174,17 +181,36 @@ func (d *Delegator) handleEnterQueue() {
 
 	d.changeQueueMessage(PLAYER_ADD, prospectivePlayer)
 
-	go func() {
-		select {
-		case <-time.After(20 * time.Minute):
-			if d.queue.PlayerInQueue(prospectivePlayer) {
-				d.Session.ChannelMessageSend(FOURMANSCHANNELID, prospectivePlayer.MentionName+" has been timed out from the queue.")
-				d.queue.LeaveQueue(prospectivePlayer)
-				d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
-			}
-		}
-	}()
+	//go func() {
+	//	select {
+	//	case <-time.After(20 * time.Minute):
+	//		if d.queue.PlayerInQueue(prospectivePlayer) {
+	//			d.Session.ChannelMessageSend(FOURMANSCHANNELID, prospectivePlayer.MentionName+" has been timed out from the queue.")
+	//			d.queue.LeaveQueue(prospectivePlayer)
+	//			d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
+	//		}
 
+	//	}
+	//}()
+
+}
+
+func (d *Delegator) startTimeoutTimer(player domain.Player) {
+	playerTimers[player] = time.AfterFunc(20*time.Minute, func() {
+		if d.queue.PlayerInQueue(player) {
+			d.Session.ChannelMessageSend(FOURMANSCHANNELID, player.MentionName+" has been timed out from the queue.")
+			d.queue.LeaveQueue(player)
+			d.changeQueueMessage(PLAYER_LEFT, player)
+		}
+	})
+}
+
+
+func (d *Delegator) stopTimeoutTimer(player domain.Player) {
+	if timer, ok := playerTimers[player]; ok {
+		timer.Stop()
+		delete(playerTimers, player)
+	}
 }
 
 func (d *Delegator) handleLeaveQueue() {
@@ -213,6 +239,8 @@ func (d *Delegator) handleLeaveQueue() {
 	if playerSuccessfullyRemoved {
 		d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
 	}
+	
+	d.stopTimeoutTimer(prospectivePlayer)
 }
 
 func (d Delegator) handleDisplayQueue() {
