@@ -85,10 +85,6 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 		d.command = DISPLAY_LEADERBOARD
 	}
 
-	if strings.Contains(d.command, MATT) {
-		d.command = MATT
-	}
-
 	d.HandleIncomingCommand()
 }
 
@@ -109,7 +105,7 @@ func (d *Delegator) HandleIncomingCommand() {
 	case DISPLAY_LEADERBOARD:
 		d.handleDisplayLeaderboard()
 	case MATT:
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
+		d.specialMattFunction()
 	case DISPLAY_MATCHES:
 		d.handleDisplayMatches()
 	default:
@@ -205,7 +201,6 @@ func (d *Delegator) startTimeoutTimer(player domain.Player) {
 	})
 }
 
-
 func (d *Delegator) stopTimeoutTimer(player domain.Player) {
 	if timer, ok := playerTimers[player]; ok {
 		timer.Stop()
@@ -239,7 +234,7 @@ func (d *Delegator) handleLeaveQueue() {
 	if playerSuccessfullyRemoved {
 		d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
 	}
-	
+
 	d.stopTimeoutTimer(prospectivePlayer)
 }
 
@@ -724,4 +719,8 @@ func (d *Delegator) getGlobalName(discordID string, nickName string) (string, er
 	} else {
 		return nickName, nil
 	}
+}
+
+func (d *Delegator) specialMattFunction() {
+	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Matt is a dingus.")
 }
