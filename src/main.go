@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -83,10 +84,29 @@ func main() {
 	}
 	fmt.Println("Bot is open and listening...")
 
+	weeklyTimer()
+
 	// Wait for kill signal to terminate
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGTERM)
 
 	<-quit
 	clientConnection.Close()
+}
+
+func weeklyTimer() {
+	// Runs once a week
+	ticker := time.NewTicker(7 * 24 * time.Hour)
+	defer ticker.Stop()
+
+	// Run the task immediately on startup
+	playerRepository.PreventSupabaseTimeout()
+
+	// Start the ticker
+	for {
+		select {
+		case <-ticker.C:
+			playerRepository.PreventSupabaseTimeout()
+		}
+	}
 }
