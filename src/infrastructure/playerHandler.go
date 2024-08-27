@@ -102,19 +102,24 @@ func (handler *PlayerHandler) GetLead() int {
 }
 
 func (handler *PlayerHandler) PreventSupabaseTimeout() int {
-	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ('%v', '%f', '%d', '%d', '%s', '%d');`, "Dummy Player", 369, 369, 369, "8dda45ca-6305-467d-b260-dcda9c13d226", 369))
+	name := "Dummy Player"
+	mmr := 0
+	wins := 0
+	losses := 0
+	matchUID := "00000000-0000-0000-0000-000000000000"
+	discordId := 000000000000000000
+
+	insertQuery := `INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ('%v', '%f', '%d', '%d', '%s', '%d');`
+
+	_, err := handler.Conn.Exec(insertQuery, name, mmr, wins, losses, matchUID, discordId)
+	if err != nil {
+		panic(err)
+	}
 
 	time.Sleep(1 * time.Minute)
 
-	name := "Dummy Player"
-	mmr := 369
-	wins := 369
-	losses := 369
-	matchUID := "8dda45ca-6305-467d-b260-dcda9c13d226"
-	discordId := 369
-
 	// Parameterized query to delete records
-	query := `DELETE FROM rocketleague 
+	deleteQuery := `DELETE FROM rocketleague 
               WHERE "Name" = $1 
               AND "MMR" = $2 
 			  AND "Wins" = $3
@@ -123,7 +128,7 @@ func (handler *PlayerHandler) PreventSupabaseTimeout() int {
 			  AND "DiscordId" = $6;`
 
 	// Execute the query with parameters
-	_, err := handler.Conn.Exec(query, name, mmr, wins, losses, matchUID, discordId)
+	_, err = handler.Conn.Exec(deleteQuery, name, mmr, wins, losses, matchUID, discordId)
 	if err != nil {
 		panic(err)
 	}

@@ -56,6 +56,7 @@ func main() {
 		return
 	}
 
+	weeklyTimer()
 	// Create application bot delegator
 	// Register handler Function
 	d := application.NewDelegator(playerRepository, matchRepository)
@@ -84,8 +85,6 @@ func main() {
 	}
 	fmt.Println("Bot is open and listening...")
 
-	weeklyTimer()
-
 	// Wait for kill signal to terminate
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGTERM)
@@ -102,6 +101,7 @@ func weeklyTimer() {
 	// Run the task immediately on startup
 	playerRepository.PreventSupabaseTimeout()
 
+	fmt.Println("Weekly timer is running...")
 	// Start the ticker
 	for {
 		select {
