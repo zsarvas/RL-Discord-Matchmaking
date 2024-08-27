@@ -103,7 +103,7 @@ func (handler *PlayerHandler) GetLead() int {
 
 func (handler *PlayerHandler) PreventSupabaseTimeout() int {
 	name := "Dummy Player"
-	mmr := 0
+	mmr := 0.0
 	wins := 0
 	losses := 0
 	matchUID := "00000000-0000-0000-0000-000000000000"
