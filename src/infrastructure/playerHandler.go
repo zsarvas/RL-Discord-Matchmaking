@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"database/sql"
+	"time"
 
 	"fmt"
 	"log"
@@ -95,6 +96,36 @@ func (handler *PlayerHandler) GetLead() int {
 	for record.Next() {
 		record.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchId, &discordId)
 		return discordId
+	}
+
+	return 0
+}
+
+func (handler *PlayerHandler) PreventSupabaseTimeout() int {
+	handler.Conn.Exec(fmt.Sprintf(`INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ('%v', '%f', '%d', '%d', '%s', '%d');`, "Dummy Player", 369, 369, 369, "8dda45ca-6305-467d-b260-dcda9c13d226", 369))
+
+	time.Sleep(1 * time.Minute)
+
+	name := "Dummy Player"
+	mmr := 369
+	wins := 369
+	losses := 369
+	matchUID := "8dda45ca-6305-467d-b260-dcda9c13d226"
+	discordId := 369
+
+	// Parameterized query to delete records
+	query := `DELETE FROM rocketleague 
+              WHERE "Name" = $1 
+              AND "MMR" = $2 
+			  AND "Wins" = $3
+			  AND "Losses" = $4
+			  AND "MatchUID" = $5
+			  AND "DiscordId" = $6;`
+
+	// Execute the query with parameters
+	_, err := handler.Conn.Exec(query, name, mmr, wins, losses, matchUID, discordId)
+	if err != nil {
+		panic(err)
 	}
 
 	return 0
