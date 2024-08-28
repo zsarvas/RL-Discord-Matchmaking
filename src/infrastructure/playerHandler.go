@@ -130,5 +130,7 @@ func (handler *PlayerHandler) PreventSupabaseTimeout() int {
 		panic(err)
 	}
 
+	fmt.Printf("Successfully wrote and deleted from Supabase.")
+
 	return 0
 }
