@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"database/sql"
+	"time"
 
 	"fmt"
 	"log"
@@ -102,18 +103,20 @@ func (handler *PlayerHandler) GetLead() int {
 
 func (handler *PlayerHandler) PreventSupabaseTimeout() int {
 	name := "Dummy Player"
-	mmr := 0
+	mmr := 0.0
 	wins := 0
 	losses := 0
 	matchUID := "00000000-0000-0000-0000-000000000000"
 	discordId := 000000000000000000
 
-	insertQuery := `INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ($1, $2, $3, $4, $5, $6);`
+	insertQuery := `INSERT INTO rocketleague ("Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId") VALUES ('%v', '%f', '%d', '%d', '%s', '%d');`
 
 	_, err := handler.Conn.Exec(insertQuery, name, mmr, wins, losses, matchUID, discordId)
 	if err != nil {
 		panic(err)
 	}
+
+	time.Sleep(1 * time.Minute)
 
 	// Parameterized query to delete records
 	deleteQuery := `DELETE FROM rocketleague 
@@ -129,8 +132,6 @@ func (handler *PlayerHandler) PreventSupabaseTimeout() int {
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Printf("Successfully wrote and deleted from Supabase.")
 
 	return 0
 }

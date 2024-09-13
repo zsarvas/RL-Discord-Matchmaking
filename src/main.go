@@ -56,7 +56,7 @@ func main() {
 		return
 	}
 
-	go weeklyTimer()
+	weeklyTimer()
 	// Create application bot delegator
 	// Register handler Function
 	d := application.NewDelegator(playerRepository, matchRepository)
