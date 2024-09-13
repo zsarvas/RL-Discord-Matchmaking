@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -56,7 +55,6 @@ func main() {
 		return
 	}
 
-	weeklyTimer()
 	// Create application bot delegator
 	// Register handler Function
 	d := application.NewDelegator(playerRepository, matchRepository)
@@ -91,22 +89,4 @@ func main() {
 
 	<-quit
 	clientConnection.Close()
-}
-
-func weeklyTimer() {
-	// Runs once a week
-	ticker := time.NewTicker(7 * 24 * time.Hour)
-	defer ticker.Stop()
-
-	// Run the task immediately on startup
-	playerRepository.PreventSupabaseTimeout()
-
-	fmt.Println("Weekly timer is running...")
-	// Start the ticker
-	for {
-		select {
-		case <-ticker.C:
-			playerRepository.PreventSupabaseTimeout()
-		}
-	}
 }

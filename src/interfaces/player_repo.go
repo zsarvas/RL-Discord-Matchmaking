@@ -10,7 +10,6 @@ type PlayerDataHandler interface {
 	UpdatePlayer(player domain.Player)
 	SetMatchId(player domain.Player)
 	GetLead() int
-	PreventSupabaseTimeout() int
 }
 
 type PlayerDataRepo struct {
@@ -46,8 +45,4 @@ func (repo *PlayerRepo) SetMatch(player domain.Player) {
 
 func (repo *PlayerRepo) GetLeader() int {
 	return repo.dbHandler.GetLead()
-}
-
-func (repo *PlayerRepo) PreventSupabaseTimeout() int {
-	return repo.dbHandler.PreventSupabaseTimeout()
 }
