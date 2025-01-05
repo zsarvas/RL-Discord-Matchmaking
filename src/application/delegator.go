@@ -77,6 +77,10 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 	d.DiscordUser = m
 	d.command = strings.ToUpper(m.Content)
 
+	if m.ChannelID != FOURMANSCHANNELID {
+		m.Content = ""
+	}
+
 	if strings.Contains(d.command, REPORT_WIN) {
 		d.command = REPORT_WIN
 	}
