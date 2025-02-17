@@ -27,20 +27,25 @@ type Delegator struct {
 	command          string
 }
 
-type DiscordUser struct {
-	ID                   string  `json:"id"`
-	Username             string  `json:"username"`
-	Avatar               string  `json:"avatar"`
-	Discriminator        string  `json:"discriminator"`
-	PublicFlags          int     `json:"public_flags"`
-	PremiumType          int     `json:"premium_type"`
-	Flags                int     `json:"flags"`
-	Banner               *string `json:"banner"`       // Pointer to handle null value
-	AccentColor          *int    `json:"accent_color"` // Pointer to handle null value
-	GlobalName           string  `json:"global_name"`
-	AvatarDecorationData string `json:"avatar_decoration_data"` // Pointer to handle null value
-	BannerColor          *string `json:"banner_color"`           // Pointer to handle null value
+type AvatarDecorationData struct {
+    Asset          string  `json:"asset"`
+    SkuID          string  `json:"sku_id"`
+    AvatarDetails  []int   `json:"asset_details,omitempty"`
+}
 
+type DiscordUser struct {
+    ID                   string               `json:"id"`
+    Username             string               `json:"username"`
+    Avatar               string               `json:"avatar"`
+    Discriminator        string               `json:"discriminator"`
+    PublicFlags          int                  `json:"public_flags"`
+    PremiumType          int                  `json:"premium_type"`
+    Flags                int                  `json:"flags"`
+    Banner               *string              `json:"banner"`              // Pointer to handle null value
+    AccentColor          *int                 `json:"accent_color"`        // Pointer to handle null value
+    GlobalName           string               `json:"global_name"`
+    AvatarDecorationData *AvatarDecorationData `json:"avatar_decoration_data"` // Now using proper struct
+    BannerColor          *string              `json:"banner_color"`        // Pointer to handle null value
 }
 
 const (
