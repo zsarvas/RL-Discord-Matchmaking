@@ -38,8 +38,9 @@ type DiscordUser struct {
 	Banner               *string `json:"banner"`       // Pointer to handle null value
 	AccentColor          *int    `json:"accent_color"` // Pointer to handle null value
 	GlobalName           string  `json:"global_name"`
-	AvatarDecorationData *string `json:"avatar_decoration_data"` // Pointer to handle null value
+	AvatarDecorationData string `json:"avatar_decoration_data"` // Pointer to handle null value
 	BannerColor          *string `json:"banner_color"`           // Pointer to handle null value
+
 }
 
 const (
