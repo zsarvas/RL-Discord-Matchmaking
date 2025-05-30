@@ -3,6 +3,7 @@ import os
 import sys
 import random
 import uuid
+import time  # Import time for adding a delay
 
 # Load environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -36,12 +37,21 @@ try:
         "DiscordId": random_discord_id
     }).execute()
 
-    print("Inserted row:", insert_response.data)
+    if insert_response.data:
+        print("Inserted row:", insert_response.data)
+    else:
+        print("Insert failed:", insert_response)
 
-    # # Delete the inserted row
+    # Add a delay to ensure the insert is processed
+    time.sleep(2)  # Wait for 2 seconds
+
+    # Delete the inserted row
     delete_response = supabase.table("rocketleague").delete().eq("id", random_id).execute()
 
-    print("Deleted row:", delete_response.data)
+    if delete_response.data:
+        print("Deleted row:", delete_response.data)
+    else:
+        print("Delete failed:", delete_response)
 
 except Exception as e:
     print("Error:", str(e))
