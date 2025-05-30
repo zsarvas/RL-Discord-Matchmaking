@@ -1,6 +1,8 @@
 from supabase import create_client, Client
 import os
 import sys
+import random
+import uuid
 
 # Load environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -14,12 +16,37 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 try:
-    # Insert a dummy row
-    insert_response = supabase.table("rocketleague").insert({"dummy_column": "dummy_value"}).execute()
+    # Generate random values for the columns
+    random_id = random.randint(1, 1000000)
+    random_name = f"Player{random.randint(1, 1000)}"
+    random_mmr = round(random.uniform(0, 3000), 2)
+    random_wins = random.randint(0, 100)
+    random_losses = random.randint(0, 100)
+    random_match_uid = str(uuid.uuid4())
+    random_discord_id = random.randint(100000000000000000, 999999999999999999)
+
+    # Insert a row with random values
+    insert_response = supabase.table("rocketleague").insert({
+        "id": random_id,
+        "Name": random_name,
+        "MMR": random_mmr,
+        "Wins": random_wins,
+        "Losses": random_losses,
+        "MatchUID": random_match_uid,
+        "DiscordId": random_discord_id
+    }).execute()
+
+    if insert_response.error:
+        raise Exception(insert_response.error)
+
     print("Inserted row:", insert_response.data)
 
-    # Delete the dummy row
-    delete_response = supabase.table("rocketleague").delete().eq("dummy_column", "dummy_value").execute()
+    # Delete the inserted row
+    delete_response = supabase.table("rocketleague").delete().eq("id", random_id).execute()
+
+    if delete_response.error:
+        raise Exception(delete_response.error)
+
     print("Deleted row:", delete_response.data)
 
 except Exception as e:
