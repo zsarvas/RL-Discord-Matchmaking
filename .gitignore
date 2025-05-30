@@ -1,5 +1,6 @@
 # Environment Variables
 dev.env
+src/dev.env
 
 # Binaries for programs and plugins
 *.exe
