@@ -36,16 +36,16 @@ try:
         "DiscordId": random_discord_id
     }).execute()
 
-    if insert_response.error:
-        raise Exception(insert_response.error)
+    if insert_response.status_code != 201:  # 201 is the HTTP status code for "Created"
+        raise Exception(f"Insert failed: {insert_response.json()}")
 
     print("Inserted row:", insert_response.data)
 
     # Delete the inserted row
     delete_response = supabase.table("rocketleague").delete().eq("id", random_id).execute()
 
-    if delete_response.error:
-        raise Exception(delete_response.error)
+    if delete_response.status_code != 200:  # 200 is the HTTP status code for "OK"
+        raise Exception(f"Delete failed: {delete_response.json()}")
 
     print("Deleted row:", delete_response.data)
 
