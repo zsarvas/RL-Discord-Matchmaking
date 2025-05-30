@@ -3,6 +3,7 @@ name: Supabase Cron Job
 on:
   schedule:
     - cron: '0 0 * * 0' # Runs every Sunday at midnight UTC
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
   update-database:
