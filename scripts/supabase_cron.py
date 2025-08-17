@@ -1,13 +1,15 @@
 from supabase import create_client, Client
+from dotenv import load_dotenv
 import os
 import sys
 import random
 import uuid
 import time  # Import time for adding a delay
 
+load_dotenv('../src/dev.env')
 # Load environment variables
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_URL = os.getenv("PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("PUBLIC_SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("Error: Missing Supabase URL or Key in environment variables.")
