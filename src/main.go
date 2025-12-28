@@ -38,7 +38,7 @@ func init() {
 		log.Fatal(err)
 	}
 
-	tokenApi = os.Getenv("SUPABASE_CONNECTION_STRING")
+	tokenApi = os.Getenv("POSTGRES_CONNECTION_STRING")
 
 	// Data Initialization
 	playerRepoHandler := infrastructure.NewPlayerHandler(tokenApi)
