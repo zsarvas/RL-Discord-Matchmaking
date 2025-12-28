@@ -25,7 +25,28 @@ go build -o api-server cmd/api-server/main.go
 
 ## Environment Variables
 
-The API requires the `POSTGRES_CONNECTION_STRING` environment variable to be set. This can be loaded from `dev.env` or set directly in your environment.
+The API requires the `POSTGRES_CONNECTION_STRING` environment variable to be set. This can be loaded from `dev.env` (in the `src/` directory) or set directly in your environment.
+
+### Option 1: Using dev.env file
+The API will automatically look for `dev.env` in several locations:
+- `../../dev.env` (when running from `src/cmd/api-server/`)
+- `../dev.env` (when running from `src/`)
+- `dev.env` (current directory)
+
+### Option 2: Setting environment variable directly
+If the `dev.env` file cannot be found, you can set the environment variable directly:
+
+```bash
+export POSTGRES_CONNECTION_STRING="host=localhost port=5432 user=vb_su password=YOUR_PASSWORD dbname=rl_db sslmode=disable"
+go run cmd/api-server/main.go
+```
+
+Or in a single command:
+```bash
+POSTGRES_CONNECTION_STRING="host=localhost port=5432 user=vb_su password=YOUR_PASSWORD dbname=rl_db sslmode=disable" go run cmd/api-server/main.go
+```
+
+**Note:** The connection string should NOT include quotes when set as an environment variable. The code will automatically handle quotes if present in the env file.
 
 Example connection string format:
 ```

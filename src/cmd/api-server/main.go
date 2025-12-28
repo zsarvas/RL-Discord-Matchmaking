@@ -14,8 +14,22 @@ func main() {
 	port := flag.String("port", "8080", "Port to run the API server on")
 	flag.Parse()
 
-	// Load environment variables
-	err := godotenv.Load("dev.env")
+	// Load environment variables - try multiple possible locations
+	var err error
+	envPaths := []string{
+		"../../dev.env", // When running from src/cmd/api-server/
+		"../dev.env",    // When running from src/
+		"dev.env",       // When running from src/ directly
+		"./dev.env",     // Current directory
+	}
+
+	for _, path := range envPaths {
+		if err = godotenv.Load(path); err == nil {
+			log.Printf("Loaded environment from %s\n", path)
+			break
+		}
+	}
+
 	if err != nil {
 		log.Println("Warning: Could not load dev.env file, using environment variables")
 	}
@@ -34,4 +48,3 @@ func main() {
 	// Start API server
 	apiServer.StartAPI(*port)
 }
-
