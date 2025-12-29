@@ -62,6 +62,8 @@ func (api *API) StartAPI(port string) {
 	mux.HandleFunc("/api/players", api.corsMiddleware(api.apiKeyMiddleware(api.getPlayers)))
 	mux.HandleFunc("/api/players/", api.corsMiddleware(api.apiKeyMiddleware(api.getPlayerByDiscordID)))
 	mux.HandleFunc("/api/leaderboard", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard)))
+	mux.HandleFunc("/api/leaderboard/1v1", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard1v1)))
+	mux.HandleFunc("/api/leaderboard/2v2", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard2v2)))
 
 	// Health check - no API key required
 	mux.HandleFunc("/health", api.corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +169,8 @@ func (api *API) getLeaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	players, err := api.playerHandler.GetLeaderboard()
+	// Default to 2v2 leaderboard for backward compatibility
+	players, err := api.playerHandler.GetLeaderboard("rocketleague_2v2")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error fetching leaderboard: %v", err), http.StatusInternalServerError)
 		return
@@ -177,9 +180,46 @@ func (api *API) getLeaderboard(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(players)
 }
 
+func (api *API) getLeaderboard1v1(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	players, err := api.playerHandler.GetLeaderboard("rocketleague_1v1")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error fetching 1v1 leaderboard: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(players)
+}
+
+func (api *API) getLeaderboard2v2(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	players, err := api.playerHandler.GetLeaderboard("rocketleague_2v2")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error fetching 2v2 leaderboard: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(players)
+}
+
 // Database methods
 func (handler *PlayerHandler) GetAllPlayers() ([]PlayerResponse, error) {
-	rows, err := handler.Conn.Query(`SELECT "id", "Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId" FROM rocketleague ORDER BY "MMR" DESC`)
+	// Default to 2v2 for backward compatibility
+	return handler.GetLeaderboard("rocketleague_2v2")
+}
+
+func (handler *PlayerHandler) GetLeaderboard(tableName string) ([]PlayerResponse, error) {
+	rows, err := handler.Conn.Query(fmt.Sprintf(`SELECT "id", "Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId" FROM %s ORDER BY "MMR" DESC`, tableName))
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +258,16 @@ func (handler *PlayerHandler) GetAllPlayers() ([]PlayerResponse, error) {
 }
 
 func (handler *PlayerHandler) GetByDiscordID(discordID int) (*PlayerResponse, error) {
-	row := handler.Conn.QueryRow(`SELECT "id", "Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId" FROM rocketleague WHERE "DiscordId" = $1`, discordID)
+	// Try 2v2 first, then 1v1
+	player, err := handler.getByDiscordIDFromTable(discordID, "rocketleague_2v2")
+	if err == sql.ErrNoRows {
+		player, err = handler.getByDiscordIDFromTable(discordID, "rocketleague_1v1")
+	}
+	return player, err
+}
+
+func (handler *PlayerHandler) getByDiscordIDFromTable(discordID int, tableName string) (*PlayerResponse, error) {
+	row := handler.Conn.QueryRow(fmt.Sprintf(`SELECT "id", "Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId" FROM %s WHERE "DiscordId" = $1`, tableName), discordID)
 
 	var index int
 	var name string
@@ -246,43 +295,4 @@ func (handler *PlayerHandler) GetByDiscordID(discordID int) (*PlayerResponse, er
 	}
 
 	return player, nil
-}
-
-func (handler *PlayerHandler) GetLeaderboard() ([]PlayerResponse, error) {
-	rows, err := handler.Conn.Query(`SELECT "id", "Name", "MMR", "Wins", "Losses", "MatchUID", "DiscordId" FROM rocketleague ORDER BY "MMR" DESC`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var players []PlayerResponse
-	for rows.Next() {
-		var index int
-		var name string
-		var mmr float64
-		var numWins int
-		var numLosses int
-		var matchID uuid.UUID
-		var discordID int
-
-		if err := rows.Scan(&index, &name, &mmr, &numWins, &numLosses, &matchID, &discordID); err != nil {
-			return nil, err
-		}
-
-		player := PlayerResponse{
-			ID:          name,
-			Name:        name,
-			MatchID:     matchID,
-			MentionName: name,
-			NumWins:     numWins,
-			NumLosses:   numLosses,
-			MMR:         mmr,
-			IsInGame:    matchID != uuid.Nil,
-			IsAdmin:     false,
-			DiscordID:   discordID,
-		}
-		players = append(players, player)
-	}
-
-	return players, rows.Err()
 }
