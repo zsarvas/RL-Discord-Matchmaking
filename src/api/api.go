@@ -15,6 +15,8 @@ import (
 
 type API struct {
 	playerHandler *PlayerHandler
+	apiKey        string
+	allowedOrigin string
 }
 
 type PlayerHandler struct {
@@ -34,7 +36,7 @@ type PlayerResponse struct {
 	Name        string    `json:"name"`
 }
 
-func NewAPI(connStr string) *API {
+func NewAPI(connStr string, apiKey string) *API {
 	connection, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -46,18 +48,22 @@ func NewAPI(connStr string) *API {
 	}
 
 	playerHandler := &PlayerHandler{Conn: connection}
-	return &API{playerHandler: playerHandler}
+	return &API{
+		playerHandler: playerHandler,
+		apiKey:        apiKey,
+		allowedOrigin: "https://versusbot.netlify.app",
+	}
 }
 
 func (api *API) StartAPI(port string) {
 	mux := http.NewServeMux()
 
-	// API routes
-	mux.HandleFunc("/api/players", api.corsMiddleware(api.getPlayers))
-	mux.HandleFunc("/api/players/", api.corsMiddleware(api.getPlayerByDiscordID))
-	mux.HandleFunc("/api/leaderboard", api.corsMiddleware(api.getLeaderboard))
+	// API routes - protected with API key (except health check)
+	mux.HandleFunc("/api/players", api.corsMiddleware(api.apiKeyMiddleware(api.getPlayers)))
+	mux.HandleFunc("/api/players/", api.corsMiddleware(api.apiKeyMiddleware(api.getPlayerByDiscordID)))
+	mux.HandleFunc("/api/leaderboard", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard)))
 
-	// Health check
+	// Health check - no API key required
 	mux.HandleFunc("/health", api.corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -73,12 +79,37 @@ func (api *API) StartAPI(port string) {
 
 func (api *API) corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+
+		// Only allow requests from the Netlify site
+		if origin == api.allowedOrigin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-API-Key")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+func (api *API) apiKeyMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		apiKey := r.Header.Get("X-API-Key")
+
+		if apiKey == "" {
+			http.Error(w, "Missing X-API-Key header", http.StatusUnauthorized)
+			return
+		}
+
+		if apiKey != api.apiKey {
+			http.Error(w, "Invalid API key", http.StatusUnauthorized)
 			return
 		}
 
