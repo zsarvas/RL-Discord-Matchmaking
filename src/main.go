@@ -19,6 +19,8 @@ import (
 var Token string
 var tokenApi string
 var playerRepository *interfaces.PlayerRepo
+var playerRepo1v1 *interfaces.PlayerRepo
+var playerRepo2v2 *interfaces.PlayerRepo
 var matchRepository *interfaces.MatchRepo
 
 func init() {
@@ -40,11 +42,16 @@ func init() {
 
 	tokenApi = os.Getenv("POSTGRES_CONNECTION_STRING")
 
-	// Data Initialization
-	playerRepoHandler := infrastructure.NewPlayerHandler(tokenApi)
+	// Data Initialization - separate handlers for 1v1 and 2v2 tables
+	playerRepoHandler1v1 := infrastructure.NewPlayerHandler(tokenApi, "rocketleague_1v1")
+	playerRepoHandler2v2 := infrastructure.NewPlayerHandler(tokenApi, "rocketleague_2v2")
 	matchRepoHandler := infrastructure.NewMatchHandler()
-	playerRepository = interfaces.NewPlayerRepo(playerRepoHandler)
+	playerRepo1v1 = interfaces.NewPlayerRepo(playerRepoHandler1v1)
+	playerRepo2v2 = interfaces.NewPlayerRepo(playerRepoHandler2v2)
 	matchRepository = interfaces.NewMatchDataRepo(matchRepoHandler)
+
+	// Keep old variable for backward compatibility (will use 2v2)
+	playerRepository = playerRepo2v2
 
 }
 
@@ -57,7 +64,7 @@ func main() {
 
 	// Create application bot delegator
 	// Register handler Function
-	d := application.NewDelegator(playerRepository, matchRepository)
+	d := application.NewDelegator(playerRepo1v1, playerRepo2v2, matchRepository)
 
 	clientConnection.AddHandler(d.InitiateDelegator)
 

@@ -19,33 +19,38 @@ import (
 )
 
 type Delegator struct {
-	Session          *discordgo.Session
-	DiscordUser      *discordgo.MessageCreate
-	queue            *domain.Queue
-	PlayerRepository domain.PlayerRepository
-	MatchRepository  MatchRepository
-	command          string
+	Session           *discordgo.Session
+	DiscordUser       *discordgo.MessageCreate
+	queue1v1          *domain.Queue
+	queue2v2          *domain.Queue
+	currentQueue      *domain.Queue
+	currentQueueType  QueueType
+	PlayerRepo1v1     domain.PlayerRepository
+	PlayerRepo2v2     domain.PlayerRepository
+	currentPlayerRepo domain.PlayerRepository
+	MatchRepository   MatchRepository
+	command           string
 }
 
 type AvatarDecorationData struct {
-    Asset          string  `json:"asset"`
-    SkuID          string  `json:"sku_id"`
-    AvatarDetails  []int   `json:"asset_details,omitempty"`
+	Asset         string `json:"asset"`
+	SkuID         string `json:"sku_id"`
+	AvatarDetails []int  `json:"asset_details,omitempty"`
 }
 
 type DiscordUser struct {
-    ID                   string               `json:"id"`
-    Username             string               `json:"username"`
-    Avatar               string               `json:"avatar"`
-    Discriminator        string               `json:"discriminator"`
-    PublicFlags          int                  `json:"public_flags"`
-    PremiumType          int                  `json:"premium_type"`
-    Flags                int                  `json:"flags"`
-    Banner               *string              `json:"banner"`              // Pointer to handle null value
-    AccentColor          *int                 `json:"accent_color"`        // Pointer to handle null value
-    GlobalName           string               `json:"global_name"`
-    AvatarDecorationData *AvatarDecorationData `json:"avatar_decoration_data"` // Now using proper struct
-    BannerColor          *string              `json:"banner_color"`        // Pointer to handle null value
+	ID                   string                `json:"id"`
+	Username             string                `json:"username"`
+	Avatar               string                `json:"avatar"`
+	Discriminator        string                `json:"discriminator"`
+	PublicFlags          int                   `json:"public_flags"`
+	PremiumType          int                   `json:"premium_type"`
+	Flags                int                   `json:"flags"`
+	Banner               *string               `json:"banner"`       // Pointer to handle null value
+	AccentColor          *int                  `json:"accent_color"` // Pointer to handle null value
+	GlobalName           string                `json:"global_name"`
+	AvatarDecorationData *AvatarDecorationData `json:"avatar_decoration_data"` // Now using proper struct
+	BannerColor          *string               `json:"banner_color"`           // Pointer to handle null value
 }
 
 const (
@@ -61,18 +66,32 @@ const (
 	LOGO_URL2               string = ""
 	ICON_URL                string = ""
 	FOURMANSCHANNELID       string = "1011004892418166877"
+	ONEVSONECHANNELID       string = "1455331680096354305"
+)
+
+type QueueType string
+
+const (
+	QueueType1v1 QueueType = "1v1"
+	QueueType2v2 QueueType = "2v2"
 )
 
 var playerTimers = make(map[domain.Player]*time.Timer)
 
-func NewDelegator(playerRepo domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
-	// could possible move this queue out of the 'constructor'
-	newQueue := domain.NewQueue(4)
+func NewDelegator(playerRepo1v1 domain.PlayerRepository, playerRepo2v2 domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
+	// Create separate queues for 1v1 (pops at 2) and 2v2 (pops at 4)
+	queue1v1 := domain.NewQueue(2)
+	queue2v2 := domain.NewQueue(4)
 
 	cd := &Delegator{
-		PlayerRepository: playerRepo,
-		MatchRepository:  matchRepo,
-		queue:            newQueue,
+		PlayerRepo1v1:     playerRepo1v1,
+		PlayerRepo2v2:     playerRepo2v2,
+		currentPlayerRepo: playerRepo2v2, // Default to 2v2
+		MatchRepository:   matchRepo,
+		queue1v1:          queue1v1,
+		queue2v2:          queue2v2,
+		currentQueue:      queue2v2, // Default to 2v2
+		currentQueueType:  QueueType2v2,
 	}
 
 	return cd
@@ -83,8 +102,19 @@ func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.Message
 	d.DiscordUser = m
 	d.command = strings.ToUpper(m.Content)
 
-	if m.ChannelID != FOURMANSCHANNELID {
+	// Route to appropriate queue based on channel
+	if m.ChannelID == ONEVSONECHANNELID {
+		d.currentQueue = d.queue1v1
+		d.currentQueueType = QueueType1v1
+		d.currentPlayerRepo = d.PlayerRepo1v1
+	} else if m.ChannelID == FOURMANSCHANNELID {
+		d.currentQueue = d.queue2v2
+		d.currentQueueType = QueueType2v2
+		d.currentPlayerRepo = d.PlayerRepo2v2
+	} else {
+		// Not a valid channel, ignore command
 		d.command = ""
+		return
 	}
 
 	if strings.Contains(d.command, REPORT_WIN) {
@@ -136,7 +166,7 @@ func (d Delegator) fetchPlayer() domain.Player {
 		log.Fatal(err)
 	}
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(globalName, strIncomingDiscordId)
+	prospectivePlayer := d.currentPlayerRepo.Get(globalName, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 	prospectivePlayer.Id = globalName
 
@@ -148,7 +178,7 @@ func (d *Delegator) handleEnterQueue() {
 	prospectivePlayer := d.fetchPlayer()
 	d.startTimeoutTimer(prospectivePlayer)
 
-	if d.queue.PlayerInQueue(prospectivePlayer) {
+	if d.currentQueue.PlayerInQueue(prospectivePlayer) {
 		d.changeQueueMessage(PLAYER_ALREADY_IN_QUEUE, prospectivePlayer)
 		return
 	}
@@ -158,27 +188,38 @@ func (d *Delegator) handleEnterQueue() {
 		return
 	}
 
-	d.queue.Enqueue(prospectivePlayer)
+	d.currentQueue.Enqueue(prospectivePlayer)
 
 	queueIsPopping := d.handleQueuePop()
 
 	if queueIsPopping {
-		d.queue.RandomizeQueue()
-		match := Match{
-			TeamOne: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
-			TeamTwo: []domain.Player{d.queue.Dequeue(), d.queue.Dequeue()},
+		d.currentQueue.RandomizeQueue()
+
+		var match Match
+		if d.currentQueueType == QueueType1v1 {
+			// 1v1: 2 players, one on each team
+			match = Match{
+				TeamOne: []domain.Player{d.currentQueue.Dequeue()},
+				TeamTwo: []domain.Player{d.currentQueue.Dequeue()},
+			}
+		} else {
+			// 2v2: 4 players, 2 on each team
+			match = Match{
+				TeamOne: []domain.Player{d.currentQueue.Dequeue(), d.currentQueue.Dequeue()},
+				TeamTwo: []domain.Player{d.currentQueue.Dequeue(), d.currentQueue.Dequeue()},
+			}
 		}
 
 		matchId := d.MatchRepository.Add(match)
 
 		for _, player := range match.TeamOne {
 			player.MatchId = matchId
-			d.PlayerRepository.SetMatch(player)
+			d.currentPlayerRepo.SetMatch(player)
 		}
 
 		for _, player := range match.TeamTwo {
 			player.MatchId = matchId
-			d.PlayerRepository.SetMatch(player)
+			d.currentPlayerRepo.SetMatch(player)
 		}
 		//queue popped here
 		d.handleLobbyReady()
@@ -202,10 +243,11 @@ func (d *Delegator) handleEnterQueue() {
 }
 
 func (d *Delegator) startTimeoutTimer(player domain.Player) {
+	channelID := d.DiscordUser.ChannelID
 	playerTimers[player] = time.AfterFunc(20*time.Minute, func() {
-		if d.queue.PlayerInQueue(player) {
-			d.Session.ChannelMessageSend(FOURMANSCHANNELID, player.MentionName+" has been timed out from the queue.")
-			d.queue.LeaveQueue(player)
+		if d.currentQueue.PlayerInQueue(player) {
+			d.Session.ChannelMessageSend(channelID, player.MentionName+" has been timed out from the queue.")
+			d.currentQueue.LeaveQueue(player)
 			d.changeQueueMessage(PLAYER_LEFT, player)
 		}
 	})
@@ -229,17 +271,17 @@ func (d *Delegator) handleLeaveQueue() {
 		log.Fatal(err)
 	}
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(globalName, strIncomingDiscordId)
+	prospectivePlayer := d.currentPlayerRepo.Get(globalName, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 	prospectivePlayer.Id = globalName
 
-	if !d.queue.PlayerInQueue(prospectivePlayer) {
+	if !d.currentQueue.PlayerInQueue(prospectivePlayer) {
 		// Player isn't in queue, exit
 		d.changeQueueMessage(PLAYER_NOT_IN_QUEUE, prospectivePlayer)
 		return
 	}
 
-	playerSuccessfullyRemoved := d.queue.LeaveQueue(prospectivePlayer)
+	playerSuccessfullyRemoved := d.currentQueue.LeaveQueue(prospectivePlayer)
 
 	if playerSuccessfullyRemoved {
 		d.changeQueueMessage(PLAYER_LEFT, prospectivePlayer)
@@ -250,7 +292,7 @@ func (d *Delegator) handleLeaveQueue() {
 
 func (d Delegator) handleDisplayQueue() {
 	incomingDiscordId := d.DiscordUser.Author.ID
-	presentationqueue := d.queue.DisplayQueue()
+	presentationqueue := d.currentQueue.DisplayQueue()
 	strIncomingDiscordId, err := strconv.Atoi(incomingDiscordId)
 	if err != nil {
 		log.Fatal(err)
@@ -259,10 +301,10 @@ func (d Delegator) handleDisplayQueue() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	callingPlayer := d.PlayerRepository.Get(globalName, strIncomingDiscordId)
+	callingPlayer := d.currentPlayerRepo.Get(globalName, strIncomingDiscordId)
 
 	if presentationqueue == "" {
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "Queue is empty")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue is empty")
 		return
 	}
 
@@ -270,8 +312,8 @@ func (d Delegator) handleDisplayQueue() {
 }
 
 func (d *Delegator) handleQueuePop() bool {
-	queueLength := d.queue.GetQueueLength()
-	popLength := d.queue.GetPopLength()
+	queueLength := d.currentQueue.GetQueueLength()
+	popLength := d.currentQueue.GetPopLength()
 
 	return queueLength == popLength
 }
@@ -289,13 +331,21 @@ func (d *Delegator) handleMatchOver() {
 		log.Fatal(err)
 	}
 
-	winningPlayer := d.PlayerRepository.Get(winnerId, strWinnerDiscordId)
+	// Determine which repository to use based on channel
+	var playerRepo domain.PlayerRepository
+	if d.DiscordUser.ChannelID == ONEVSONECHANNELID {
+		playerRepo = d.PlayerRepo1v1
+	} else {
+		playerRepo = d.PlayerRepo2v2
+	}
+
+	winningPlayer := playerRepo.Get(winnerId, strWinnerDiscordId)
 	winningMatch := winningPlayer.MatchId
 
-	oldLeader := d.PlayerRepository.GetLeader()
+	oldLeader := playerRepo.GetLeader()
 
 	if winningPlayer.MatchId == uuid.Nil {
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "You are not currently in a match.")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You are not currently in a match.")
 		return
 	}
 
@@ -319,12 +369,12 @@ func (d *Delegator) handleMatchOver() {
 	}
 
 	if !matchFound {
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Matches to report.")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Matches to report.")
 		return
 	}
 	d.displayWinMessage(winnerId, winnerImage)
 	delete(activeMatches, winningMatch)
-	leader := d.PlayerRepository.GetLeader()
+	leader := playerRepo.GetLeader()
 	strLeader := strconv.Itoa(leader)
 	strOldLeader := strconv.Itoa(oldLeader)
 	d.handleLeaderRole(strLeader, strOldLeader)
@@ -346,18 +396,26 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 
 	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/(math.Pow(10, (winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
 
+	// Determine which repository to use based on channel
+	var playerRepo domain.PlayerRepository
+	if d.DiscordUser.ChannelID == ONEVSONECHANNELID {
+		playerRepo = d.PlayerRepo1v1
+	} else {
+		playerRepo = d.PlayerRepo2v2
+	}
+
 	for _, player := range winningPlayers {
 		player.Mmr += mmrChange
 		player.NumWins++
 		player.MatchId = uuid.Nil
-		d.PlayerRepository.Update(player)
+		playerRepo.Update(player)
 	}
 
 	for _, player := range losingPlayers {
 		player.Mmr -= mmrChange
 		player.NumLosses++
 		player.MatchId = uuid.Nil
-		d.PlayerRepository.Update(player)
+		playerRepo.Update(player)
 	}
 
 }
@@ -366,7 +424,7 @@ func (d *Delegator) handleLobbyReady() {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Active Matches")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
 		return
 	}
 
@@ -429,13 +487,13 @@ func (d *Delegator) handleLobbyReady() {
 			// IconURL: ICON_URL,
 		},
 	}
-	d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
-	d.Session.ChannelMessageSend(FOURMANSCHANNELID, "<@&1028789594277302302> a queue has popped!  Join the next queue to defend your title.")
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
+	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "<@&1028789594277302302> a queue has popped!  Join the next queue to defend your title.")
 }
 
 func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 
-	queueLength := d.queue.GetQueueLength()
+	queueLength := d.currentQueue.GetQueueLength()
 	commands := []string{}
 	active := "**!activematches**"
 	activeDesc := "View all active matches (matches with no report yet).\n"
@@ -486,7 +544,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		message = "Cannot queue while in a match. " + player.MentionName + " is already in a match."
 		title = ""
 	case DISPLAY_QUEUE:
-		message = d.queue.DisplayQueue()
+		message = d.currentQueue.DisplayQueue()
 		title = "Queue status"
 	case PLAYER_NOT_IN_QUEUE:
 		message = "Type !q to join the queue."
@@ -635,7 +693,7 @@ func (d *Delegator) handleDisplayMatches() {
 			},
 		}
 
-		d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
+		d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 	}
 
 }
@@ -643,16 +701,16 @@ func (d *Delegator) handleDisplayMatches() {
 func (d *Delegator) handleClearQueue() {
 
 	authorID := d.DiscordUser.Author.ID
-	queueLength := d.queue.GetQueueLength()
+	queueLength := d.currentQueue.GetQueueLength()
 
 	if authorID == "189579878448889856" {
 		for queueLength > 0 {
-			d.queue.Dequeue()
-			queueLength = d.queue.GetQueueLength()
+			d.currentQueue.Dequeue()
+			queueLength = d.currentQueue.GetQueueLength()
 		}
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "Queue has been cleared.")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Queue has been cleared.")
 	} else {
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "You do not have permission to execute this command.")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You do not have permission to execute this command.")
 	}
 
 }
@@ -665,7 +723,7 @@ func (d *Delegator) handleDisplayHelp() {
 		log.Fatal(err)
 	}
 	mention := d.DiscordUser.Author.Mention()
-	prospectivePlayer := d.PlayerRepository.Get(incomingId, strIncomingDiscordId)
+	prospectivePlayer := d.currentPlayerRepo.Get(incomingId, strIncomingDiscordId)
 	prospectivePlayer.MentionName = mention
 
 	d.changeQueueMessage(DISPLAY_HELP_MENU, prospectivePlayer)
