@@ -39,11 +39,17 @@ func main() {
 		log.Fatal("POSTGRES_CONNECTION_STRING environment variable is required")
 	}
 
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("API_KEY environment variable is required")
+	}
+
 	// Remove quotes if present
 	connStr = strings.Trim(connStr, "\"")
+	apiKey = strings.Trim(apiKey, "\"")
 
 	// Initialize API
-	apiServer := api.NewAPI(connStr)
+	apiServer := api.NewAPI(connStr, apiKey)
 
 	// Start API server
 	apiServer.StartAPI(*port)
