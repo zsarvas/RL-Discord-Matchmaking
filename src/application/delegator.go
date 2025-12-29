@@ -178,9 +178,28 @@ func (d *Delegator) handleEnterQueue() {
 	prospectivePlayer := d.fetchPlayer()
 	d.startTimeoutTimer(prospectivePlayer)
 
+	// Check if player is already in the current queue
 	if d.currentQueue.PlayerInQueue(prospectivePlayer) {
 		d.changeQueueMessage(PLAYER_ALREADY_IN_QUEUE, prospectivePlayer)
 		return
+	}
+
+	// Check if player is in the other queue and remove them
+	var otherQueue *domain.Queue
+	if d.currentQueueType == QueueType1v1 {
+		otherQueue = d.queue2v2
+	} else {
+		otherQueue = d.queue1v1
+	}
+
+	if otherQueue.PlayerInQueue(prospectivePlayer) {
+		// Remove from other queue
+		otherQueue.LeaveQueue(prospectivePlayer)
+		// Stop any timeout timer for the other queue
+		if timer, ok := playerTimers[prospectivePlayer]; ok {
+			timer.Stop()
+			delete(playerTimers, prospectivePlayer)
+		}
 	}
 
 	if prospectivePlayer.MatchId != uuid.Nil {
@@ -580,7 +599,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 			// IconURL: ICON_URL,
 		},
 	}
-	d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
 
 func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
@@ -610,14 +629,14 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
 			// IconURL: ICON_URL,
 		},
 	}
-	d.Session.ChannelMessageSendEmbed(FOURMANSCHANNELID, embed)
+	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
 
 func (d *Delegator) handleDisplayMatches() {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
-		d.Session.ChannelMessageSend(FOURMANSCHANNELID, "No Active Matches")
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
 		return
 	}
 
