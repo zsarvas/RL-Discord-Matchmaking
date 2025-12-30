@@ -67,6 +67,9 @@ const (
 	ICON_URL                string = ""
 	FOURMANSCHANNELID       string = "1011004892418166877"
 	ONEVSONECHANNELID       string = "1455331680096354305"
+	GUILDID                 string = "189628012604555265"
+	ROLEID_2V2              string = "1028789594277302302"
+	ROLEID_1V1              string = "1455374709582467084"
 )
 
 type QueueType string
@@ -76,7 +79,13 @@ const (
 	QueueType2v2 QueueType = "2v2"
 )
 
-var playerTimers = make(map[domain.Player]*time.Timer)
+// TimerKey is a composite key for tracking timers per player per queue type
+type TimerKey struct {
+	PlayerID  int
+	QueueType QueueType
+}
+
+var playerTimers = make(map[TimerKey]*time.Timer)
 
 func NewDelegator(playerRepo1v1 domain.PlayerRepository, playerRepo2v2 domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
 	// Create separate queues for 1v1 (pops at 2) and 2v2 (pops at 4)
@@ -184,24 +193,8 @@ func (d *Delegator) handleEnterQueue() {
 		return
 	}
 
-	// Check if player is in the other queue and remove them
-	var otherQueue *domain.Queue
-	if d.currentQueueType == QueueType1v1 {
-		otherQueue = d.queue2v2
-	} else {
-		otherQueue = d.queue1v1
-	}
-
-	if otherQueue.PlayerInQueue(prospectivePlayer) {
-		// Remove from other queue
-		otherQueue.LeaveQueue(prospectivePlayer)
-		// Stop any timeout timer for the other queue
-		if timer, ok := playerTimers[prospectivePlayer]; ok {
-			timer.Stop()
-			delete(playerTimers, prospectivePlayer)
-		}
-	}
-
+	// Check if player is in a match for THIS queue type (not the other queue)
+	// Each queue type has its own MatchId, so they can be in a 1v1 match and still queue for 2v2
 	if prospectivePlayer.MatchId != uuid.Nil {
 		d.changeQueueMessage(PLAYER_ALREADY_IN_MATCH, prospectivePlayer)
 		return
@@ -263,19 +256,36 @@ func (d *Delegator) handleEnterQueue() {
 
 func (d *Delegator) startTimeoutTimer(player domain.Player) {
 	channelID := d.DiscordUser.ChannelID
-	playerTimers[player] = time.AfterFunc(20*time.Minute, func() {
-		if d.currentQueue.PlayerInQueue(player) {
+	currentQueue := d.currentQueue
+	currentQueueType := d.currentQueueType
+
+	// Create a composite key for this player in this queue type
+	timerKey := TimerKey{
+		PlayerID:  player.DiscordId,
+		QueueType: currentQueueType,
+	}
+
+	playerTimers[timerKey] = time.AfterFunc(20*time.Minute, func() {
+		if currentQueue.PlayerInQueue(player) {
 			d.Session.ChannelMessageSend(channelID, player.MentionName+" has been timed out from the queue.")
-			d.currentQueue.LeaveQueue(player)
+			currentQueue.LeaveQueue(player)
 			d.changeQueueMessage(PLAYER_LEFT, player)
 		}
+		// Clean up the timer
+		delete(playerTimers, timerKey)
 	})
 }
 
 func (d *Delegator) stopTimeoutTimer(player domain.Player) {
-	if timer, ok := playerTimers[player]; ok {
+	// Create a composite key for this player in the current queue type
+	timerKey := TimerKey{
+		PlayerID:  player.DiscordId,
+		QueueType: d.currentQueueType,
+	}
+
+	if timer, ok := playerTimers[timerKey]; ok {
 		timer.Stop()
-		delete(playerTimers, player)
+		delete(playerTimers, timerKey)
 	}
 }
 
@@ -361,8 +371,6 @@ func (d *Delegator) handleMatchOver() {
 	winningPlayer := playerRepo.Get(winnerId, strWinnerDiscordId)
 	winningMatch := winningPlayer.MatchId
 
-	oldLeader := playerRepo.GetLeader()
-
 	if winningPlayer.MatchId == uuid.Nil {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You are not currently in a match.")
 		return
@@ -393,10 +401,9 @@ func (d *Delegator) handleMatchOver() {
 	}
 	d.displayWinMessage(winnerId, winnerImage)
 	delete(activeMatches, winningMatch)
-	leader := playerRepo.GetLeader()
-	strLeader := strconv.Itoa(leader)
-	strOldLeader := strconv.Itoa(oldLeader)
-	d.handleLeaderRole(strLeader, strOldLeader)
+
+	// Update leader roles for both queues
+	d.updateLeaderRoles()
 }
 
 func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
@@ -753,11 +760,82 @@ func (d *Delegator) handleDisplayLeaderboard() {
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Leaderboard for this server can be found at https://versusbot.netlify.app")
 }
 
-func (d *Delegator) handleLeaderRole(leader string, oldLeader string) {
+// updateLeaderRoles checks both 1v1 and 2v2 leaderboards and assigns the appropriate king roles
+func (d *Delegator) updateLeaderRoles() {
+	// Update 2v2 leader role
+	d.updateLeaderRoleForQueue(d.PlayerRepo2v2, ROLEID_2V2)
 
-	d.Session.GuildMemberRoleAdd("189628012604555265", leader, "1028789594277302302")
-	if leader != oldLeader {
-		d.Session.GuildMemberRoleRemove("189628012604555265", oldLeader, "1028789594277302302")
+	// Update 1v1 leader role
+	d.updateLeaderRoleForQueue(d.PlayerRepo1v1, ROLEID_1V1)
+}
+
+// updateLeaderRoleForQueue gets the current leader from a queue and assigns/removes the role
+func (d *Delegator) updateLeaderRoleForQueue(playerRepo domain.PlayerRepository, roleID string) {
+	currentLeader := playerRepo.GetLeader()
+	if currentLeader == 0 {
+		// No leader found, just remove role from anyone who has it
+		d.removeRoleFromAllMembers(roleID)
+		return
+	}
+
+	strCurrentLeader := strconv.Itoa(currentLeader)
+
+	// Get all guild members to find who currently has this role
+	guildMembers, err := d.Session.GuildMembers(GUILDID, "", 1000)
+	if err != nil {
+		log.Printf("Error fetching guild members: %v", err)
+		// Still try to add role to new leader even if we can't find old one
+		d.Session.GuildMemberRoleAdd(GUILDID, strCurrentLeader, roleID)
+		return
+	}
+
+	// Find who currently has this role
+	var oldLeaderID string = ""
+	for _, member := range guildMembers {
+		for _, role := range member.Roles {
+			if role == roleID {
+				oldLeaderID = member.User.ID
+				break
+			}
+		}
+		if oldLeaderID != "" {
+			break
+		}
+	}
+
+	// Add role to new leader
+	err = d.Session.GuildMemberRoleAdd(GUILDID, strCurrentLeader, roleID)
+	if err != nil {
+		log.Printf("Error adding role to leader: %v", err)
+	}
+
+	// Remove role from old leader if different
+	if oldLeaderID != "" && oldLeaderID != strCurrentLeader {
+		err = d.Session.GuildMemberRoleRemove(GUILDID, oldLeaderID, roleID)
+		if err != nil {
+			log.Printf("Error removing role from old leader: %v", err)
+		}
+	}
+}
+
+// removeRoleFromAllMembers removes a role from all members who have it (used when no leader exists)
+func (d *Delegator) removeRoleFromAllMembers(roleID string) {
+	guildMembers, err := d.Session.GuildMembers(GUILDID, "", 1000)
+	if err != nil {
+		log.Printf("Error fetching guild members: %v", err)
+		return
+	}
+
+	for _, member := range guildMembers {
+		for _, role := range member.Roles {
+			if role == roleID {
+				err = d.Session.GuildMemberRoleRemove(GUILDID, member.User.ID, roleID)
+				if err != nil {
+					log.Printf("Error removing role from member %s: %v", member.User.ID, err)
+				}
+				break
+			}
+		}
 	}
 }
 
