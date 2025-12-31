@@ -2,6 +2,7 @@ package application
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math"
@@ -360,12 +361,15 @@ func (d *Delegator) handleMatchOver() {
 		log.Fatal(err)
 	}
 
-	// Determine which repository to use based on channel
+	// Determine which repository and queue type to use based on channel
 	var playerRepo domain.PlayerRepository
+	var queueType QueueType
 	if d.DiscordUser.ChannelID == ONEVSONECHANNELID {
 		playerRepo = d.PlayerRepo1v1
+		queueType = QueueType1v1
 	} else {
 		playerRepo = d.PlayerRepo2v2
+		queueType = QueueType2v2
 	}
 
 	winningPlayer := playerRepo.Get(winnerId, strWinnerDiscordId)
@@ -399,7 +403,7 @@ func (d *Delegator) handleMatchOver() {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Matches to report.")
 		return
 	}
-	d.displayWinMessage(winnerId, winnerImage)
+	d.displayWinMessage(winnerId, winnerImage, queueType)
 	delete(activeMatches, winningMatch)
 
 	// Update leader roles for both queues
@@ -479,18 +483,28 @@ func (d *Delegator) handleLobbyReady() {
 
 	}
 
+	// Determine field names based on queue type
+	var field1Name, field2Name string
+	if d.currentQueueType == QueueType1v1 {
+		field1Name = "-Player 1-"
+		field2Name = "-Player 2-"
+	} else {
+		field1Name = "-Team 1-"
+		field2Name = "-Team 2-"
+	}
+
 	embed := &discordgo.MessageEmbed{
 		Author:      &discordgo.MessageEmbedAuthor{},
 		Color:       0xff0000, // Red
 		Description: "The following teams will now play:",
 		Fields: []*discordgo.MessageEmbedField{
 			&discordgo.MessageEmbedField{
-				Name:   "-Team 1-",
+				Name:   field1Name,
 				Value:  team1,
 				Inline: true,
 			},
 			&discordgo.MessageEmbedField{
-				Name:   "-Team 2-",
+				Name:   field2Name,
 				Value:  team2,
 				Inline: true,
 			},
@@ -514,7 +528,15 @@ func (d *Delegator) handleLobbyReady() {
 		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
-	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "<@&1028789594277302302> a queue has popped!  Join the next queue to defend your title.")
+
+	// Ping the correct king role based on queue type
+	var kingRoleID string
+	if d.currentQueueType == QueueType1v1 {
+		kingRoleID = ROLEID_1V1
+	} else {
+		kingRoleID = ROLEID_2V2
+	}
+	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, fmt.Sprintf("<@&%s> a queue has popped! Join the next queue to defend your title.", kingRoleID))
 }
 
 func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
@@ -609,9 +631,14 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 }
 
-func (d *Delegator) displayWinMessage(playerName string, playerImage string) {
+func (d *Delegator) displayWinMessage(playerName string, playerImage string, queueType QueueType) {
 
-	title := playerName + "'s team wins!"
+	var title string
+	if queueType == QueueType1v1 {
+		title = playerName + " wins!"
+	} else {
+		title = playerName + "'s team wins!"
+	}
 	message := "Leaderboard has been updated."
 	image := playerImage
 
