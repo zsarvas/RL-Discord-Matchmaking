@@ -523,7 +523,7 @@ func (d *Delegator) handleLobbyReady() {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Powered by 2CDs",
+			Text: "Type `!help` for a list of commands",
 			// IconURL: ICON_URL,
 		},
 	}
@@ -624,7 +624,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Powered by 2CDs",
+			Text: "Type `!help` for a list of commands",
 			// IconURL: ICON_URL,
 		},
 	}
@@ -659,7 +659,7 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string, que
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Powered by 2CDs",
+			Text: "Type `!help` for a list of commands",
 			// IconURL: ICON_URL,
 		},
 	}
@@ -741,7 +741,7 @@ func (d *Delegator) handleDisplayMatches() {
 			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 			Title:     title,
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Powered by 2CDs",
+				Text: "Type `!help` for a list of commands",
 				// IconURL: ICON_URL,
 			},
 		}
