@@ -560,7 +560,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	help := "**!help**"
 	helpDesc := "This menu.\n"
 
-	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc, leaderboard, leaderboardDesc)
+	commands = append(commands, q, qDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, leaderboard, leaderboardDesc, active, activeDesc, clear, clearDesc, help, helpDesc)
 
 	var message string
 	var title string
