@@ -543,22 +543,22 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 
 	queueLength := d.currentQueue.GetQueueLength()
 	commands := []string{}
-	active := "**!activematches**"
-	activeDesc := "View all active matches (matches with no report yet).\n"
-	clear := "**!clear**"
-	clearDesc := "Clear the queue.\n"
-	help := "**!help**"
-	helpDesc := "This menu.\n"
+	q := "**!q**"
+	qDesc := "Join the queue.\n"
 	leave := "**!leave**"
 	leaveDesc := "Leave the queue.\n"
 	report := "**!report win**"
 	reportDesc := "Report a match win.\n"
 	status := "**!status**"
 	statusDesc := "List the players in the queue.\n"
-	q := "**!q**"
-	qDesc := "Join the queue.\n"
 	leaderboard := "**!leaderboard**"
 	leaderboardDesc := "Displays a link to view this server's leaderboard.\n"
+	active := "**!activematches**"
+	activeDesc := "View all active matches (matches with no report yet).\n"
+	clear := "**!clear**"
+	clearDesc := "Clear the queue.\n"
+	help := "**!help**"
+	helpDesc := "This menu.\n"
 
 	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc, leaderboard, leaderboardDesc)
 
@@ -600,6 +600,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	case DISPLAY_HELP_MENU:
 		title = "**Help**"
 		message = strings.Join(commands, "\n")
+		color = 0x800080 // Purple
 	default:
 		return
 	}
