@@ -1,4 +1,4 @@
-# Discord Matchmaking AKA Versus Bot
+# Versus Bot
 
 <div align="center">
   <img src="src/logo.png" alt="RL-Discord-Matchmaking Logo" width="200"/>
