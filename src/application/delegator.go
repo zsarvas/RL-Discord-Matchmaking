@@ -65,7 +65,7 @@ const (
 	DISPLAY_HELP_MENU       int    = 8
 	LOGO_URL1               string = ""
 	LOGO_URL2               string = ""
-	ICON_URL                string = ""
+	ICON_URL                string = "logo.png"
 	FOURMANSCHANNELID       string = "1011004892418166877"
 	ONEVSONECHANNELID       string = "1455331680096354305"
 	GUILDID                 string = "189628012604555265"
@@ -523,8 +523,8 @@ func (d *Delegator) handleLobbyReady() {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     "Queue popped, lobby is now ready!",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Type `!help` for a list of commands",
-			// IconURL: ICON_URL,
+			Text:    "Type `!help` for a list of commands",
+			IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
@@ -543,22 +543,22 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 
 	queueLength := d.currentQueue.GetQueueLength()
 	commands := []string{}
-	active := "**!activematches**"
-	activeDesc := "View all active matches (matches with no report yet).\n"
-	clear := "**!clear**"
-	clearDesc := "Clear the queue.\n"
-	help := "**!help**"
-	helpDesc := "This menu.\n"
+	q := "**!q**"
+	qDesc := "Join the queue.\n"
 	leave := "**!leave**"
 	leaveDesc := "Leave the queue.\n"
 	report := "**!report win**"
 	reportDesc := "Report a match win.\n"
 	status := "**!status**"
 	statusDesc := "List the players in the queue.\n"
-	q := "**!q**"
-	qDesc := "Join the queue.\n"
 	leaderboard := "**!leaderboard**"
 	leaderboardDesc := "Displays a link to view this server's leaderboard.\n"
+	active := "**!activematches**"
+	activeDesc := "View all active matches (matches with no report yet).\n"
+	clear := "**!clear**"
+	clearDesc := "Clear the queue.\n"
+	help := "**!help**"
+	helpDesc := "This menu.\n"
 
 	commands = append(commands, active, activeDesc, clear, clearDesc, help, helpDesc, leave, leaveDesc, report, reportDesc, status, statusDesc, q, qDesc, leaderboard, leaderboardDesc)
 
@@ -600,6 +600,7 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 	case DISPLAY_HELP_MENU:
 		title = "**Help**"
 		message = strings.Join(commands, "\n")
+		color = 0x800080 // Purple
 	default:
 		return
 	}
@@ -624,8 +625,8 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Type `!help` for a list of commands",
-			// IconURL: ICON_URL,
+			Text:    "Type `!help` for a list of commands",
+			IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
@@ -659,8 +660,8 @@ func (d *Delegator) displayWinMessage(playerName string, playerImage string, que
 		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:     title,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Type `!help` for a list of commands",
-			// IconURL: ICON_URL,
+			Text:    "Type `!help` for a list of commands",
+			IconURL: ICON_URL,
 		},
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
