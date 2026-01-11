@@ -4,7 +4,7 @@
   <img src="src/logo.png" alt="RL-Discord-Matchmaking Logo" width="200"/>
 </div>
 
-<h3 align="center">Professional Rocket League Matchmaking Bot</h3>
+<h3 align="center">Professional Matchmaking Bot</h3>
 
 <p align="center">
   <a href="#features">Features</a> •
