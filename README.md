@@ -1,4 +1,4 @@
-# 🚀 RL-Discord-Matchmaking
+# Discord Matchmaking AKA Versus Bot
 
 <div align="center">
   <img src="src/logo.png" alt="RL-Discord-Matchmaking Logo" width="200"/>
@@ -18,7 +18,7 @@
 
 ## Overview
 
-A sophisticated Discord matchmaking bot for Rocket League, written in Go. This bot facilitates competitive 1v1 and 2v2 matches with automated matchmaking, MMR tracking, leaderboards, and real-time Discord integration.
+A sophisticated Discord matchmaking bot written in Go, designed for Rocket League but easily adaptable for any competitive game requiring matchmaking ladders. This bot facilitates competitive 1v1 and 2v2 matches with automated matchmaking, MMR tracking, leaderboards, and real-time Discord integration.
 
 ## Features
 
