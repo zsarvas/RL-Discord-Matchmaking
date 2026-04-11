@@ -64,6 +64,7 @@ func (api *API) StartAPI(port string) {
 	mux.HandleFunc("/api/leaderboard", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard)))
 	mux.HandleFunc("/api/leaderboard/1v1", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard1v1)))
 	mux.HandleFunc("/api/leaderboard/2v2", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard2v2)))
+	mux.HandleFunc("/api/leaderboard/3v3", api.corsMiddleware(api.apiKeyMiddleware(api.getLeaderboard3v3)))
 
 	// Health check - no API key required
 	mux.HandleFunc("/health", api.corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -205,6 +206,22 @@ func (api *API) getLeaderboard2v2(w http.ResponseWriter, r *http.Request) {
 	players, err := api.playerHandler.GetLeaderboard("rocketleague_2v2")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error fetching 2v2 leaderboard: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(players)
+}
+
+func (api *API) getLeaderboard3v3(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	players, err := api.playerHandler.GetLeaderboard("rocketleague_3v3")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error fetching 3v3 leaderboard: %v", err), http.StatusInternalServerError)
 		return
 	}
 
