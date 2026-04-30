@@ -312,7 +312,7 @@ func (d *Delegator) handleEnterQueue() {
 			d.currentPlayerRepo.SetMatch(player)
 		}
 		//queue popped here
-		d.handleLobbyReady()
+		d.handleLobbyReady(matchId)
 		return
 	}
 
@@ -523,10 +523,15 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 
 }
 
-func (d *Delegator) handleLobbyReady() {
+func (d *Delegator) handleLobbyReady(matchId uuid.UUID) {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+		return
+	}
+	match, ok := activeMatches[matchId]
+	if !ok {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
 		return
 	}
@@ -534,27 +539,24 @@ func (d *Delegator) handleLobbyReady() {
 	var team1 string
 	var team2 string
 
-	for _, v := range activeMatches {
-		stringifiedTeamOne := []string{}
-		stringifiedTeamTwo := []string{}
+	stringifiedTeamOne := []string{}
+	stringifiedTeamTwo := []string{}
 
-		for _, player := range v.TeamOne {
-			stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
-			stringifiedTeamOne = append(stringifiedTeamOne, " [")
-			stringifiedTeamOne = append(stringifiedTeamOne, strconv.Itoa(int(math.Round(player.Mmr))))
-			stringifiedTeamOne = append(stringifiedTeamOne, "]\n")
-		}
-		for _, player := range v.TeamTwo {
-			stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
-			stringifiedTeamTwo = append(stringifiedTeamTwo, " [")
-			stringifiedTeamTwo = append(stringifiedTeamTwo, strconv.Itoa(int(math.Round(player.Mmr))))
-			stringifiedTeamTwo = append(stringifiedTeamTwo, "]\n")
-		}
-
-		team1 = strings.Join(stringifiedTeamOne, "")
-		team2 = strings.Join(stringifiedTeamTwo, "")
-
+	for _, player := range match.TeamOne {
+		stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
+		stringifiedTeamOne = append(stringifiedTeamOne, " [")
+		stringifiedTeamOne = append(stringifiedTeamOne, strconv.Itoa(int(math.Round(player.Mmr))))
+		stringifiedTeamOne = append(stringifiedTeamOne, "]\n")
 	}
+	for _, player := range match.TeamTwo {
+		stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
+		stringifiedTeamTwo = append(stringifiedTeamTwo, " [")
+		stringifiedTeamTwo = append(stringifiedTeamTwo, strconv.Itoa(int(math.Round(player.Mmr))))
+		stringifiedTeamTwo = append(stringifiedTeamTwo, "]\n")
+	}
+
+	team1 = strings.Join(stringifiedTeamOne, "")
+	team2 = strings.Join(stringifiedTeamTwo, "")
 
 	// Determine field names based on queue type
 	var field1Name, field2Name string
