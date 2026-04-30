@@ -68,10 +68,12 @@ const (
 	LOGO_URL1               string = ""
 	LOGO_URL2               string = ""
 	ICON_URL                string = ""
-	FOURMANSCHANNELID string = "1011004892418166877"
-	GUILDID           string = "189628012604555265"
-	ROLEID_2V2        string = "1028789594277302302"
-	ROLEID_1V1        string = "1455374709582467084"
+	FOURMANSCHANNELID     string = "1011004892418166877"  // 2v2 channel
+	ONEVSONECHANNELID     string = "1455331680096354305"  // 1v1 channel
+	THREEVTHREECHANNELID  string = "1499550032746123265"  // 3v3 channel
+	GUILDID               string = "189628012604555265"
+	ROLEID_2V2            string = "1028789594277302302"
+	ROLEID_1V1            string = "1455374709582467084"
 	// ROLEID_3V3: set to your Discord role ID when you have a 3v3 king role; empty skips role ping/updates
 	ROLEID_3V3 string = ""
 )
@@ -167,126 +169,37 @@ func (d *Delegator) roleIDForQueueType(qt QueueType) string {
 }
 
 func notInQueueTitle(qt QueueType) string {
-	switch qt {
-	case QueueType1v1:
-		return "You are not in the 1v1 queue."
-	case QueueType3v3:
-		return "You are not in the 3v3 queue."
-	default:
-		return "You are not in the 2v2 queue."
-	}
+	return "You are not currently in the queue."
 }
 
 func notInQueueJoinHint() string {
-	return "Join with **!q** or **!q2** (2v2), **!q1** (1v1), or **!q3** (3v3). Leave with **!leave** or **!leave2** (2v2), **!leave1** (1v1), or **!leave3** (3v3)."
+	return "Type **!q** to join the queue."
 }
 
 func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.MessageCreate) {
 	d.Session = s
 	d.DiscordUser = m
 
-	if m.ChannelID != FOURMANSCHANNELID {
+	// Route to appropriate queue based on channel (separate channels per playlist)
+	if m.ChannelID == ONEVSONECHANNELID {
+		d.setQueueContext(QueueType1v1)
+	} else if m.ChannelID == FOURMANSCHANNELID {
+		d.setQueueContext(QueueType2v2)
+	} else if m.ChannelID == THREEVTHREECHANNELID {
+		d.setQueueContext(QueueType3v3)
+	} else {
+		// Not a valid channel, ignore command
 		return
 	}
 
-	upper := strings.ToUpper(strings.TrimSpace(m.Content))
-	d.setQueueContext(QueueType2v2)
-	d.command = ""
+	d.command = strings.ToUpper(m.Content)
 
-	if strings.Contains(upper, DISPLAY_LEADERBOARD) {
-		d.command = DISPLAY_LEADERBOARD
-		d.HandleIncomingCommand()
-		return
-	}
-
-	if strings.Contains(upper, "!REPORT") && (strings.Contains(upper, "WIN") || strings.Contains(upper, " W")) {
+	if strings.Contains(d.command, REPORT_WIN) {
 		d.command = REPORT_WIN
-		d.HandleIncomingCommand()
-		return
 	}
 
-	switch upper {
-	case DISPLAY_HELP:
-		d.command = DISPLAY_HELP
-	case DISPLAY_MATCHES:
-		d.command = DISPLAY_MATCHES
-	case MATT:
-		d.command = MATT
-	case CLEAR_QUEUE, "!CLEAR2":
-		d.setQueueContext(QueueType2v2)
-		d.command = CLEAR_QUEUE
-	case "!CLEAR1":
-		d.setQueueContext(QueueType1v1)
-		d.command = CLEAR_QUEUE
-	case "!CLEAR3":
-		d.setQueueContext(QueueType3v3)
-		d.command = CLEAR_QUEUE
-	case ENTER_QUEUE, "!Q2":
-		d.setQueueContext(QueueType2v2)
-		d.command = ENTER_QUEUE
-	case "!Q1":
-		d.setQueueContext(QueueType1v1)
-		d.command = ENTER_QUEUE
-	case "!Q3":
-		d.setQueueContext(QueueType3v3)
-		d.command = ENTER_QUEUE
-	case LEAVE_QUEUE, "!LEAVE2":
-		d.setQueueContext(QueueType2v2)
-		d.command = LEAVE_QUEUE
-	case "!LEAVE1":
-		d.setQueueContext(QueueType1v1)
-		d.command = LEAVE_QUEUE
-	case "!LEAVE3":
-		d.setQueueContext(QueueType3v3)
-		d.command = LEAVE_QUEUE
-	case QUEUE_STATUS, "!STATUS2":
-		d.setQueueContext(QueueType2v2)
-		d.command = QUEUE_STATUS
-	case "!STATUS1":
-		d.setQueueContext(QueueType1v1)
-		d.command = QUEUE_STATUS
-	case "!STATUS3":
-		d.setQueueContext(QueueType3v3)
-		d.command = QUEUE_STATUS
-	default:
-		fields := strings.Fields(upper)
-		if len(fields) == 0 {
-			return
-		}
-		tok := fields[0]
-		switch tok {
-		case "!Q", "!Q2":
-			d.setQueueContext(QueueType2v2)
-			d.command = ENTER_QUEUE
-		case "!Q1":
-			d.setQueueContext(QueueType1v1)
-			d.command = ENTER_QUEUE
-		case "!Q3":
-			d.setQueueContext(QueueType3v3)
-			d.command = ENTER_QUEUE
-		case "!LEAVE", "!LEAVE2":
-			d.setQueueContext(QueueType2v2)
-			d.command = LEAVE_QUEUE
-		case "!LEAVE1":
-			d.setQueueContext(QueueType1v1)
-			d.command = LEAVE_QUEUE
-		case "!LEAVE3":
-			d.setQueueContext(QueueType3v3)
-			d.command = LEAVE_QUEUE
-		case "!STATUS", "!STATUS2":
-			d.setQueueContext(QueueType2v2)
-			d.command = QUEUE_STATUS
-		case "!STATUS1":
-			d.setQueueContext(QueueType1v1)
-			d.command = QUEUE_STATUS
-		case "!STATUS3":
-			d.setQueueContext(QueueType3v3)
-			d.command = QUEUE_STATUS
-		}
-	}
-
-	if d.command == "" {
-		return
+	if strings.Contains(d.command, DISPLAY_LEADERBOARD) {
+		d.command = DISPLAY_LEADERBOARD
 	}
 
 	d.HandleIncomingCommand()
@@ -699,20 +612,20 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 
 	queueLength := d.currentQueue.GetQueueLength()
 	commands := []string{}
-	q := "**!q** / **!q2**"
-	qDesc := "Join the 2v2 queue. **!q1** — 1v1, **!q3** — 3v3.\n"
-	leave := "**!leave** / **!leave2**"
-	leaveDesc := "Leave the 2v2 queue. **!leave1** / **!leave3** — 1v1 / 3v3.\n"
+	q := "**!q**"
+	qDesc := "Join the queue.\n"
+	leave := "**!leave**"
+	leaveDesc := "Leave the queue.\n"
 	report := "**!report win**"
 	reportDesc := "Report a match win.\n"
-	status := "**!status** / **!status2**"
-	statusDesc := "2v2 queue list. **!status1** / **!status3** — 1v1 / 3v3.\n"
+	status := "**!status**"
+	statusDesc := "List the players in the queue.\n"
 	leaderboard := "**!leaderboard**"
 	leaderboardDesc := "Displays a link to view this server's leaderboard.\n"
 	active := "**!activematches**"
 	activeDesc := "View all active matches (matches with no report yet).\n"
-	clear := "**!clear** / **!clear2**"
-	clearDesc := "Clear the 2v2 queue (admin). **!clear1** / **!clear3** — 1v1 / 3v3.\n"
+	clear := "**!clear**"
+	clearDesc := "Clear the queue.\n"
 	help := "**!help**"
 	helpDesc := "This menu.\n"
 
