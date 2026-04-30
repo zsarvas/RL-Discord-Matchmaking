@@ -8,9 +8,10 @@ import (
 type Team = []domain.Player
 
 type Match struct {
-	TeamOne  Team
-	TeamTwo  Team
-	MatchUid uuid.UUID
+	TeamOne   Team
+	TeamTwo   Team
+	MatchUid  uuid.UUID
+	QueueType QueueType
 }
 
 type MatchRepository interface {

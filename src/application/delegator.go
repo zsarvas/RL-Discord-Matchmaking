@@ -24,10 +24,12 @@ type Delegator struct {
 	DiscordUser       *discordgo.MessageCreate
 	queue1v1          *domain.Queue
 	queue2v2          *domain.Queue
+	queue3v3          *domain.Queue
 	currentQueue      *domain.Queue
 	currentQueueType  QueueType
 	PlayerRepo1v1     domain.PlayerRepository
 	PlayerRepo2v2     domain.PlayerRepository
+	PlayerRepo3v3     domain.PlayerRepository
 	currentPlayerRepo domain.PlayerRepository
 	MatchRepository   MatchRepository
 	command           string
@@ -66,11 +68,14 @@ const (
 	LOGO_URL1               string = ""
 	LOGO_URL2               string = ""
 	ICON_URL                string = ""
-	FOURMANSCHANNELID       string = "1011004892418166877"
-	ONEVSONECHANNELID       string = "1455331680096354305"
-	GUILDID                 string = "189628012604555265"
-	ROLEID_2V2              string = "1028789594277302302"
-	ROLEID_1V1              string = "1455374709582467084"
+	FOURMANSCHANNELID     string = "1011004892418166877"  // 2v2 channel
+	ONEVSONECHANNELID     string = "1455331680096354305"  // 1v1 channel
+	THREEVTHREECHANNELID  string = "1499550032746123265"  // 3v3 channel
+	GUILDID               string = "189628012604555265"
+	ROLEID_2V2            string = "1028789594277302302"
+	ROLEID_1V1            string = "1455374709582467084"
+	// ROLEID_3V3: set to your Discord role ID when you have a 3v3 king role; empty skips role ping/updates
+	ROLEID_3V3 string = ""
 )
 
 type QueueType string
@@ -78,6 +83,7 @@ type QueueType string
 const (
 	QueueType1v1 QueueType = "1v1"
 	QueueType2v2 QueueType = "2v2"
+	QueueType3v3 QueueType = "3v3"
 )
 
 // TimerKey is a composite key for tracking timers per player per queue type
@@ -88,44 +94,105 @@ type TimerKey struct {
 
 var playerTimers = make(map[TimerKey]*time.Timer)
 
-func NewDelegator(playerRepo1v1 domain.PlayerRepository, playerRepo2v2 domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
-	// Create separate queues for 1v1 (pops at 2) and 2v2 (pops at 4)
+func NewDelegator(playerRepo1v1 domain.PlayerRepository, playerRepo2v2 domain.PlayerRepository, playerRepo3v3 domain.PlayerRepository, matchRepo MatchRepository) *Delegator {
 	queue1v1 := domain.NewQueue(2)
 	queue2v2 := domain.NewQueue(4)
+	queue3v3 := domain.NewQueue(6)
 
 	cd := &Delegator{
 		PlayerRepo1v1:     playerRepo1v1,
 		PlayerRepo2v2:     playerRepo2v2,
-		currentPlayerRepo: playerRepo2v2, // Default to 2v2
+		PlayerRepo3v3:     playerRepo3v3,
+		currentPlayerRepo: playerRepo2v2,
 		MatchRepository:   matchRepo,
 		queue1v1:          queue1v1,
 		queue2v2:          queue2v2,
-		currentQueue:      queue2v2, // Default to 2v2
+		queue3v3:          queue3v3,
+		currentQueue:      queue2v2,
 		currentQueueType:  QueueType2v2,
 	}
 
 	return cd
 }
 
-func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.MessageCreate) {
-	d.Session = s
-	d.DiscordUser = m
-	d.command = strings.ToUpper(m.Content)
-
-	// Route to appropriate queue based on channel
-	if m.ChannelID == ONEVSONECHANNELID {
+func (d *Delegator) setQueueContext(qt QueueType) {
+	switch qt {
+	case QueueType1v1:
 		d.currentQueue = d.queue1v1
 		d.currentQueueType = QueueType1v1
 		d.currentPlayerRepo = d.PlayerRepo1v1
-	} else if m.ChannelID == FOURMANSCHANNELID {
+	case QueueType3v3:
+		d.currentQueue = d.queue3v3
+		d.currentQueueType = QueueType3v3
+		d.currentPlayerRepo = d.PlayerRepo3v3
+	default:
 		d.currentQueue = d.queue2v2
 		d.currentQueueType = QueueType2v2
 		d.currentPlayerRepo = d.PlayerRepo2v2
+	}
+}
+
+func (d *Delegator) repoForQueueType(qt QueueType) domain.PlayerRepository {
+	switch qt {
+	case QueueType1v1:
+		return d.PlayerRepo1v1
+	case QueueType3v3:
+		return d.PlayerRepo3v3
+	default:
+		return d.PlayerRepo2v2
+	}
+}
+
+func (d *Delegator) playerRepoAndQueueTypeForMatch(m Match) (domain.PlayerRepository, QueueType) {
+	if m.QueueType != "" {
+		return d.repoForQueueType(m.QueueType), m.QueueType
+	}
+	switch len(m.TeamOne) {
+	case 1:
+		return d.PlayerRepo1v1, QueueType1v1
+	case 3:
+		return d.PlayerRepo3v3, QueueType3v3
+	default:
+		return d.PlayerRepo2v2, QueueType2v2
+	}
+}
+
+func (d *Delegator) roleIDForQueueType(qt QueueType) string {
+	switch qt {
+	case QueueType1v1:
+		return ROLEID_1V1
+	case QueueType3v3:
+		return ROLEID_3V3
+	default:
+		return ROLEID_2V2
+	}
+}
+
+func notInQueueTitle(qt QueueType) string {
+	return "You are not currently in the queue."
+}
+
+func notInQueueJoinHint() string {
+	return "Type **!q** to join the queue."
+}
+
+func (d *Delegator) InitiateDelegator(s *discordgo.Session, m *discordgo.MessageCreate) {
+	d.Session = s
+	d.DiscordUser = m
+
+	// Route to appropriate queue based on channel (separate channels per playlist)
+	if m.ChannelID == ONEVSONECHANNELID {
+		d.setQueueContext(QueueType1v1)
+	} else if m.ChannelID == FOURMANSCHANNELID {
+		d.setQueueContext(QueueType2v2)
+	} else if m.ChannelID == THREEVTHREECHANNELID {
+		d.setQueueContext(QueueType3v3)
 	} else {
 		// Not a valid channel, ignore command
-		d.command = ""
 		return
 	}
+
+	d.command = strings.ToUpper(m.Content)
 
 	if strings.Contains(d.command, REPORT_WIN) {
 		d.command = REPORT_WIN
@@ -210,16 +277,26 @@ func (d *Delegator) handleEnterQueue() {
 
 		var match Match
 		if d.currentQueueType == QueueType1v1 {
-			// 1v1: 2 players, one on each team
 			match = Match{
-				TeamOne: []domain.Player{d.currentQueue.Dequeue()},
-				TeamTwo: []domain.Player{d.currentQueue.Dequeue()},
+				TeamOne:   []domain.Player{d.currentQueue.Dequeue()},
+				TeamTwo:   []domain.Player{d.currentQueue.Dequeue()},
+				QueueType: QueueType1v1,
+			}
+		} else if d.currentQueueType == QueueType3v3 {
+			match = Match{
+				TeamOne: []domain.Player{
+					d.currentQueue.Dequeue(), d.currentQueue.Dequeue(), d.currentQueue.Dequeue(),
+				},
+				TeamTwo: []domain.Player{
+					d.currentQueue.Dequeue(), d.currentQueue.Dequeue(), d.currentQueue.Dequeue(),
+				},
+				QueueType: QueueType3v3,
 			}
 		} else {
-			// 2v2: 4 players, 2 on each team
 			match = Match{
 				TeamOne: []domain.Player{d.currentQueue.Dequeue(), d.currentQueue.Dequeue()},
 				TeamTwo: []domain.Player{d.currentQueue.Dequeue(), d.currentQueue.Dequeue()},
+				QueueType: QueueType2v2,
 			}
 		}
 
@@ -235,7 +312,7 @@ func (d *Delegator) handleEnterQueue() {
 			d.currentPlayerRepo.SetMatch(player)
 		}
 		//queue popped here
-		d.handleLobbyReady()
+		d.handleLobbyReady(matchId)
 		return
 	}
 
@@ -361,56 +438,60 @@ func (d *Delegator) handleMatchOver() {
 		log.Fatal(err)
 	}
 
-	// Determine which repository and queue type to use based on channel
-	var playerRepo domain.PlayerRepository
-	var queueType QueueType
-	if d.DiscordUser.ChannelID == ONEVSONECHANNELID {
-		playerRepo = d.PlayerRepo1v1
-		queueType = QueueType1v1
-	} else {
-		playerRepo = d.PlayerRepo2v2
-		queueType = QueueType2v2
+	activeMatches := d.MatchRepository.GetMatches()
+
+	var winningMatch uuid.UUID
+	var matched Match
+	var winnerOnTeamOne bool
+	var found bool
+
+	for mid, mt := range activeMatches {
+		for _, p := range mt.TeamOne {
+			if p.Id == winnerId && p.DiscordId == strWinnerDiscordId {
+				winningMatch = mid
+				matched = mt
+				winnerOnTeamOne = true
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+		for _, p := range mt.TeamTwo {
+			if p.Id == winnerId && p.DiscordId == strWinnerDiscordId {
+				winningMatch = mid
+				matched = mt
+				winnerOnTeamOne = false
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
 	}
 
-	winningPlayer := playerRepo.Get(winnerId, strWinnerDiscordId)
-	winningMatch := winningPlayer.MatchId
-
-	if winningPlayer.MatchId == uuid.Nil {
+	if !found {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "You are not currently in a match.")
 		return
 	}
 
-	var foundWinner bool = false
-	var matchFound bool = false
-	activeMatches := d.MatchRepository.GetMatches()
+	playerRepo, queueType := d.playerRepoAndQueueTypeForMatch(matched)
 
-	for _, teams := range activeMatches[winningMatch].TeamOne {
-		if teams.Id == winnerId {
-			foundWinner = true
-			matchFound = true
-
-			d.adjustMmr(activeMatches[winningMatch].TeamOne, activeMatches[winningMatch].TeamTwo)
-		}
+	if winnerOnTeamOne {
+		d.adjustMmr(matched.TeamOne, matched.TeamTwo, playerRepo)
+	} else {
+		d.adjustMmr(matched.TeamTwo, matched.TeamOne, playerRepo)
 	}
 
-	if !foundWinner {
-		matchFound = true
-
-		d.adjustMmr(activeMatches[winningMatch].TeamTwo, activeMatches[winningMatch].TeamOne)
-	}
-
-	if !matchFound {
-		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Matches to report.")
-		return
-	}
 	d.displayWinMessage(winnerId, winnerImage, queueType)
 	delete(activeMatches, winningMatch)
 
-	// Update leader roles for both queues
 	d.updateLeaderRoles()
 }
 
-func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player) {
+func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []domain.Player, playerRepo domain.PlayerRepository) {
 
 	var winningSum float64 = 0
 	var losingSum float64 = 0
@@ -425,14 +506,6 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 	}
 
 	mmrChange = math.Max(20*(1-math.Pow(10, (winningSum/400))/(math.Pow(10, (winningSum/400))+math.Pow(10, (losingSum/400)))), 1)
-
-	// Determine which repository to use based on channel
-	var playerRepo domain.PlayerRepository
-	if d.DiscordUser.ChannelID == ONEVSONECHANNELID {
-		playerRepo = d.PlayerRepo1v1
-	} else {
-		playerRepo = d.PlayerRepo2v2
-	}
 
 	for _, player := range winningPlayers {
 		player.Mmr += mmrChange
@@ -450,10 +523,15 @@ func (d *Delegator) adjustMmr(winningPlayers []domain.Player, losingPlayers []do
 
 }
 
-func (d *Delegator) handleLobbyReady() {
+func (d *Delegator) handleLobbyReady(matchId uuid.UUID) {
 	activeMatches := d.MatchRepository.GetMatches()
 
 	if len(activeMatches) == 0 {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
+		return
+	}
+	match, ok := activeMatches[matchId]
+	if !ok {
 		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "No Active Matches")
 		return
 	}
@@ -461,27 +539,24 @@ func (d *Delegator) handleLobbyReady() {
 	var team1 string
 	var team2 string
 
-	for _, v := range activeMatches {
-		stringifiedTeamOne := []string{}
-		stringifiedTeamTwo := []string{}
+	stringifiedTeamOne := []string{}
+	stringifiedTeamTwo := []string{}
 
-		for _, player := range v.TeamOne {
-			stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
-			stringifiedTeamOne = append(stringifiedTeamOne, " [")
-			stringifiedTeamOne = append(stringifiedTeamOne, strconv.Itoa(int(math.Round(player.Mmr))))
-			stringifiedTeamOne = append(stringifiedTeamOne, "]\n")
-		}
-		for _, player := range v.TeamTwo {
-			stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
-			stringifiedTeamTwo = append(stringifiedTeamTwo, " [")
-			stringifiedTeamTwo = append(stringifiedTeamTwo, strconv.Itoa(int(math.Round(player.Mmr))))
-			stringifiedTeamTwo = append(stringifiedTeamTwo, "]\n")
-		}
-
-		team1 = strings.Join(stringifiedTeamOne, "")
-		team2 = strings.Join(stringifiedTeamTwo, "")
-
+	for _, player := range match.TeamOne {
+		stringifiedTeamOne = append(stringifiedTeamOne, player.MentionName)
+		stringifiedTeamOne = append(stringifiedTeamOne, " [")
+		stringifiedTeamOne = append(stringifiedTeamOne, strconv.Itoa(int(math.Round(player.Mmr))))
+		stringifiedTeamOne = append(stringifiedTeamOne, "]\n")
 	}
+	for _, player := range match.TeamTwo {
+		stringifiedTeamTwo = append(stringifiedTeamTwo, player.MentionName)
+		stringifiedTeamTwo = append(stringifiedTeamTwo, " [")
+		stringifiedTeamTwo = append(stringifiedTeamTwo, strconv.Itoa(int(math.Round(player.Mmr))))
+		stringifiedTeamTwo = append(stringifiedTeamTwo, "]\n")
+	}
+
+	team1 = strings.Join(stringifiedTeamOne, "")
+	team2 = strings.Join(stringifiedTeamTwo, "")
 
 	// Determine field names based on queue type
 	var field1Name, field2Name string
@@ -529,14 +604,10 @@ func (d *Delegator) handleLobbyReady() {
 	}
 	d.Session.ChannelMessageSendEmbed(d.DiscordUser.ChannelID, embed)
 
-	// Ping the correct king role based on queue type
-	var kingRoleID string
-	if d.currentQueueType == QueueType1v1 {
-		kingRoleID = ROLEID_1V1
-	} else {
-		kingRoleID = ROLEID_2V2
+	kingRoleID := d.roleIDForQueueType(d.currentQueueType)
+	if kingRoleID != "" {
+		d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, fmt.Sprintf("<@&%s> a queue has popped! Join the next queue to defend your title.", kingRoleID))
 	}
-	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, fmt.Sprintf("<@&%s> a queue has popped! Join the next queue to defend your title.", kingRoleID))
 }
 
 func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
@@ -573,6 +644,12 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		color = 0xffff00 // Yellow
 	} else if queueLength == 3 {
 		color = 0xffa500 // Orange
+	} else if queueLength == 4 {
+		color = 0xff6347
+	} else if queueLength == 5 {
+		color = 0xff4500
+	} else if queueLength >= 6 {
+		color = 0xff0000
 	}
 
 	title = strconv.Itoa(queueLength) + " players are in the queue."
@@ -595,8 +672,8 @@ func (d *Delegator) changeQueueMessage(messageConst int, player domain.Player) {
 		message = d.currentQueue.DisplayQueue()
 		title = "Queue status"
 	case PLAYER_NOT_IN_QUEUE:
-		message = "Type !q to join the queue."
-		title = "You are not currently in the queue."
+		message = notInQueueJoinHint()
+		title = notInQueueTitle(d.currentQueueType)
 	case DISPLAY_HELP_MENU:
 		title = "**Help**"
 		message = strings.Join(commands, "\n")
@@ -712,10 +789,15 @@ func (d *Delegator) handleDisplayMatches() {
 		team1 = strings.Join(stringifiedTeamOne, "")
 		team2 = strings.Join(stringifiedTeamTwo, "")
 
+		modeLabel := string(v.QueueType)
+		if modeLabel == "" {
+			modeLabel = "2v2"
+		}
+
 		embed := &discordgo.MessageEmbed{
 			Author:      &discordgo.MessageEmbedAuthor{},
 			Color:       0x00ff00, // Green
-			Description: "Match ID: " + v.MatchUid.String(),
+			Description: "Match ID: " + v.MatchUid.String() + " · " + modeLabel,
 			Fields: []*discordgo.MessageEmbedField{
 				&discordgo.MessageEmbedField{
 					Name:   "-Team 1-",
@@ -788,13 +870,13 @@ func (d *Delegator) handleDisplayLeaderboard() {
 	d.Session.ChannelMessageSend(d.DiscordUser.ChannelID, "Leaderboard for this server can be found at https://versusbot.netlify.app")
 }
 
-// updateLeaderRoles checks both 1v1 and 2v2 leaderboards and assigns the appropriate king roles
+// updateLeaderRoles assigns king roles per playlist (skips 3v3 if ROLEID_3V3 is unset)
 func (d *Delegator) updateLeaderRoles() {
-	// Update 2v2 leader role
 	d.updateLeaderRoleForQueue(d.PlayerRepo2v2, ROLEID_2V2)
-
-	// Update 1v1 leader role
 	d.updateLeaderRoleForQueue(d.PlayerRepo1v1, ROLEID_1V1)
+	if ROLEID_3V3 != "" {
+		d.updateLeaderRoleForQueue(d.PlayerRepo3v3, ROLEID_3V3)
+	}
 }
 
 // updateLeaderRoleForQueue gets the current leader from a queue and assigns/removes the role
